@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ram Shack Job Application</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700; /* font-bold */
+            color: #1f2937; /* text-gray-900 */
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        h2 {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 600; /* font-semibold */
+            color: #374151; /* text-gray-800 */
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e5e7eb; /* border-b-2 border-gray-200 */
+            padding-bottom: 0.5rem;
+        }
+        h3 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+            color: #4b5563; /* text-gray-700 */
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            font-weight: 500; /* font-medium */
+            color: #374151; /* text-gray-800 */
+            margin-bottom: 0.5rem;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="date"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-size: 1rem;
+            color: #1f2937; /* text-gray-900 */
+            box-sizing: border-box;
+            transition: border-color 0.2s ease-in-out;
+        }
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="tel"]:focus,
+        input[type="date"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #4f46e5; /* indigo-600 */
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); /* ring-indigo-200 */
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center; /* Align items to the center by default */
+            margin-top: 0.5rem;
+        }
+        .checkbox-group.align-start {
+            align-items: flex-start; /* For disclaimers, align to top */
+        }
+        .checkbox-group input[type="checkbox"],
+        .checkbox-group input[type="radio"] {
+            margin-right: 0.5rem;
+            flex-shrink: 0; /* Prevent checkbox/radio from shrinking */
+        }
+        .disclaimer-text { /* New class for disclaimer text */
+            font-size: 0.875rem; /* text-sm */
+            color: #4b5563; /* text-gray-700 */
+            margin-top: 0; /* Reset margin from previous .disclaimer */
+            padding-top: 0; /* Reset padding from previous .disclaimer */
+            border-top: none; /* Reset border from previous .disclaimer */
+        }
+        /* Styles for the signature canvas */
+        #signatureCanvas {
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            background-color: #f9fafb; /* gray-50 */
+            cursor: crosshair;
+            touch-action: none; /* Prevent scrolling on touch */
+            width: 100%; /* Make canvas responsive */
+            height: 150px; /* Fixed height for signature area */
+        }
+        .clear-button {
+            margin-top: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .clear-button:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        .submit-button {
+            margin-top: 2rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            width: 100%; /* Make button full width */
+        }
+        .submit-button:hover {
+            background-color: #4338ca; /* indigo-700 */
+        }
+        .thank-you {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 1.125rem; /* text-lg */
+            color: #374151; /* text-gray-800 */
+            font-weight: 500;
+        }
+        .submit-message {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: #10b981; /* green-500 */
+            font-weight: 500;
+        }
+        .warning-message {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #ef4444; /* red-500 */
+            font-weight: 500;
+        }
+        .download-section {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #e0f2fe; /* light blue */
+            border: 1px solid #90cdf4;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .download-section p {
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            color: #2b6cb0; /* darker blue */
+        }
+        .download-button {
+            padding: 0.75rem 1.5rem;
+            background-color: #22c55e; /* green-500 */
+            color: white;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            margin-top: 1rem;
+        }
+        .download-button:hover {
+            background-color: #16a34a; /* green-600 */
+        }
+        .download-status {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+        /* Styles to hide form elements that should NOT be in the image capture */
+        .hide-for-capture {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="applicationFormContainer">
+        <div id="application-header">
+            <h1>Ram Shack Job Application</h1>
+            <p class="text-center text-gray-600 mb-6">Please complete this application form accurately and thoroughly.</p>
+        </div>
+
+        <form id="jobApplicationForm">
+            <div id="personal-info-section">
+                <h2>Personal Information</h2>
+                <div class="form-group">
+                    <label for="fullName">Full Name:</label>
+                    <input type="text" id="fullName" name="fullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="address">Address:</label>
+                    <input type="text" id="address" name="address" required>
+                </div>
+                <div class="form-group">
+                    <label for="cityStateZip">City, State, Zip:</label>
+                    <input type="text" id="cityStateZip" name="cityStateZip" required>
+                </div>
+                <div class="form-group">
+                    <label for="phoneNumber">Phone Number:</label>
+                    <input type="tel" id="phoneNumber" name="phoneNumber" required>
+                </div>
+                <div class="form-group">
+                    <label for="emailAddress">Email Address:</label>
+                    <input type="email" id="emailAddress" name="emailAddress" required>
+                </div>
+            </div>
+
+            <div id="position-applied-for-section">
+                <h2>Position Applied For</h2>
+                <div class="form-group">
+                    <label for="positionDesired">Position Desired:</label>
+                    <input type="text" id="positionDesired" name="positionDesired" required>
+                </div>
+                <div class="form-group">
+                    <label for="dateAvailable">Date Available:</label>
+                    <input type="date" id="dateAvailable" name="dateAvailable">
+                </div>
+                <div class="form-group">
+                    <label for="desiredSalary">Desired Salary (Hourly/Annually):</label>
+                    <input type="text" id="desiredSalary" name="desiredSalary">
+                </div>
+                <div class="form-group">
+                    <label>Are you legally authorized to work in the United States?</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="authorizedYes" name="authorized" value="yes" class="mr-2">
+                        <label for="authorizedYes" class="inline-block mb-0">Yes</label>
+                        <input type="radio" id="authorizedNo" name="authorized" value="no" class="ml-4 mr-2">
+                        <label for="authorizedNo" class="inline-block mb-0">No</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Have you ever been employed by The Ram Shack before?</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="employedBeforeYes" name="employedBefore" value="yes" class="mr-2">
+                        <label for="employedBeforeYes" class="inline-block mb-0">Yes</label>
+                        <input type="radio" id="employedBeforeNo" name="employedBefore" value="no" class="ml-4 mr-2">
+                        <label for="employedBeforeNo" class="inline-block mb-0">No</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="employedBeforeWhen">If yes, when?</label>
+                    <input type="text" id="employedBeforeWhen" name="employedBeforeWhen">
+                </div>
+            </div>
+
+            <div id="education-section">
+                <h2>Education</h2>
+                <h3>High School</h3>
+                <div class="form-group">
+                    <label for="hsName">Name of High School:</label>
+                    <input type="text" id="hsName" name="hsName">
+                </div>
+                <div class="form-group">
+                    <label for="hsLocation">Location:</label>
+                    <input type="text" id="hsLocation" name="hsLocation">
+                </div>
+                <div class="form-group flex flex-wrap -mx-2">
+                    <div class="w-full md:w-1/2 px-2 mb-4 md:mb-0">
+                        <label for="hsDatesFrom">Dates Attended: From</label>
+                        <input type="date" id="hsDatesFrom" name="hsDatesFrom">
+                    </div>
+                    <div class="w-full md:w-1/2 px-2">
+                        <label for="hsDatesTo">To</label>
+                        <input type="date" id="hsDatesTo" name="hsDatesTo">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Did you graduate?</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="hsGraduatedYes" name="hsGraduated" value="yes" class="mr-2">
+                        <label for="hsGraduatedYes" class="inline-block mb-0">Yes</label>
+                        <input type="radio" id="hsGraduatedNo" name="hsGraduated" value="no" class="ml-4 mr-2">
+                        <label for="hsGraduatedNo" class="inline-block mb-0">No</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="hsDegree">If yes, Degree/Diploma:</label>
+                    <input type="text" id="hsDegree" name="hsDegree">
+                </div>
+
+                <h3>College/University</h3>
+                <div class="form-group">
+                    <label for="collegeName">Name of Institution:</label>
+                    <input type="text" id="collegeName" name="collegeName">
+                </div>
+                <div class="form-group">
+                    <label for="collegeLocation">Location:</label>
+                    <input type="text" id="collegeLocation" name="collegeLocation">
+                </div>
+                <div class="form-group flex flex-wrap -mx-2">
+                    <div class="w-full md:w-1/2 px-2 mb-4 md:mb-0">
+                        <label for="collegeDatesFrom">Dates Attended: From</label>
+                        <input type="date" id="collegeDatesFrom" name="collegeDatesFrom">
+                    </div>
+                    <div class="w-full md:w-1/2 px-2">
+                        <label for="collegeDatesTo">To</label>
+                        <input type="date" id="collegeDatesTo" name="collegeDatesTo">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Did you graduate?</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="collegeGraduatedYes" name="collegeGraduated" value="yes" class="mr-2">
+                        <label for="collegeGraduatedYes" class="inline-block mb-0">Yes</label>
+                        <input type="radio" id="collegeGraduatedNo" name="collegeGraduated" value="no" class="ml-4 mr-2">
+                        <label for="collegeGraduatedNo" class="inline-block mb-0">No</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="collegeDegree">If yes, Degree/Major:</label>
+                    <input type="text" id="collegeDegree" name="collegeDegree">
+                </div>
+
+                <h3>Other (Trade School, Certifications, etc.)</h3>
+                <div class="form-group">
+                    <label for="otherName">Name of Institution/Program:</label>
+                    <input type="text" id="otherName" name="otherName">
+                </div>
+                <div class="form-group">
+                    <label for="otherLocation">Location:</label>
+                    <input type="text" id="otherLocation" name="otherLocation">
+                </div>
+                <div class="form-group flex flex-wrap -mx-2">
+                    <div class="w-full md:w-1/2 px-2 mb-4 md:mb-0">
+                        <label for="otherDatesFrom">Dates Attended: From</label>
+                        <input type="date" id="otherDatesFrom" name="otherDatesFrom">
+                    </div>
+                    <div class="w-full md:w-1/2 px-2">
+                        <label for="otherDatesTo">To</label>
+                        <input type="date" id="otherDatesTo" name="otherDatesTo">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="otherCredential">Certificate/Credential:</label>
+                    <input type="text" id="otherCredential" name="otherCredential">
+                </div>
+            </div>
+
+            <div id="work-experience-section">
+                <h2>Work Experience</h2>
+                <p class="text-gray-600 mb-4">Please list your last three employers, starting with the most recent.</p>
+
+                <h3>Employer 1</h3>
+                <div class="form-group">
+                    <label for="employer1Company">Company Name:</label>
+                    <input type="text" id="employer1Company" name="employer1Company">
+                </div>
+                <div class="form-group">
+                    <label for="employer1Title">Job Title:</label>
+                    <input type="text" id="employer1Title" name="employer1Title">
+                </div>
+                <div class="form-group flex flex-wrap -mx-2">
+                    <div class="w-full md:w-1/2 px-2 mb-4 md:mb-0">
+                        <label for="employer1DatesFrom">Dates Employed: From</label>
+                        <input type="date" id="employer1DatesFrom" name="employer1DatesFrom">
+                    </div>
+                    <div class="w-full md:w-1/2 px-2">
+                        <label for="employer1DatesTo">To</label>
+                        <input type="date" id="employer1DatesTo" name="employer1DatesTo">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="employer1Supervisor">Supervisor's Name:</label>
+                    <input type="text" id="employer1Supervisor" name="employer1Supervisor">
+                </div>
+                <div class="form-group">
+                    <label for="employer1Phone">Phone Number:</label>
+                    <input type="tel" id="employer1Phone" name="employer1Phone">
+                </div>
+                <div class="form-group">
+                    <label>May we contact this employer?</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="employer1ContactYes" name="employer1Contact" value="yes" class="mr-2">
+                        <label for="employer1ContactYes" class="inline-block mb-0">Yes</label>
+                        <input type="radio" id="employer1ContactNo" name="employer1Contact" value="no" class="ml-4 mr-2">
+                        <label for="employer1ContactNo" class="inline-block mb-0">No</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="employer1Responsibilities">Responsibilities:</label>
+                    <textarea id="employer1Responsibilities" name="employer1Responsibilities"></textarea>
+                </div>
+
+                <h3>Employer 2</h3>
+                <div class="form-group">
+                    <label for="employer2Company">Company Name:</label>
+                    <input type="text" id="employer2Company" name="employer2Company">
+                </div>
+                <div class="form-group">
+                    <label for="employer2Title">Job Title:</label>
+                    <input type="text" id="employer2Title" name="employer2Title">
+                </div>
+                <div class="form-group flex flex-wrap -mx-2">
+                    <div class="w-full md:w-1/2 px-2 mb-4 md:mb-0">
+                        <label for="employer2DatesFrom">Dates Employed: From</label>
+                        <input type="date" id="employer2DatesFrom" name="employer2DatesFrom">
+                    </div>
+                    <div class="w-full md:w-1/2 px-2">
+                        <label for="employer2DatesTo">To</label>
+                        <input type="date" id="employer2DatesTo" name="employer2DatesTo">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="employer2Supervisor">Supervisor's Name:</label>
+                    <input type="text" id="employer2Supervisor" name="employer2Supervisor">
+                </div>
+                <div class="form-group">
+                    <label for="employer2Phone">Phone Number:</label>
+                    <input type="tel" id="employer2Phone" name="employer2Phone">
+                </div>
+                <div class="form-group">
+                    <label>May we contact this employer?</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="employer2ContactYes" name="employer2Contact" value="yes" class="mr-2">
+                        <label for="employer2ContactYes" class="inline-block mb-0">Yes</label>
+                        <input type="radio" id="employer2ContactNo" name="employer2Contact" value="no" class="ml-4 mr-2">
+                        <label for="employer2ContactNo" class="inline-block mb-0">No</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="employer2Responsibilities">Responsibilities:</label>
+                    <textarea id="employer2Responsibilities" name="employer2Responsibilities"></textarea>
+                </div>
+
+                <h3>Employer 3</h3>
+                <div class="form-group">
+                    <label for="employer3Company">Company Name:</label>
+                    <input type="text" id="employer3Company" name="employer3Company">
+                </div>
+                <div class="form-group">
+                    <label for="employer3Title">Job Title:</label>
+                    <input type="text" id="employer3Title" name="employer3Title">
+                </div>
+                <div class="form-group flex flex-wrap -mx-2">
+                    <div class="w-full md:w-1/2 px-2 mb-4 md:mb-0">
+                        <label for="employer3DatesFrom">Dates Employed: From</label>
+                        <input type="date" id="employer3DatesFrom" name="employer3DatesFrom">
+                    </div>
+                    <div class="w-full md:w-1/2 px-2">
+                        <label for="employer3DatesTo">To</label>
+                        <input type="date" id="employer3DatesTo" name="employer3DatesTo">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="employer3Supervisor">Supervisor's Name:</label>
+                    <input type="text" id="employer3Supervisor" name="employer3Supervisor">
+                </div>
+                <div class="form-group">
+                    <label for="employer3Phone">Phone Number:</label>
+                    <input type="tel" id="employer3Phone" name="employer3Phone">
+                </div>
+                <div class="form-group">
+                    <label>May we contact this employer?</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="employer3ContactYes" name="employer3Contact" value="yes" class="mr-2">
+                        <label for="employer3ContactYes" class="inline-block mb-0">Yes</label>
+                        <input type="radio" id="employer3ContactNo" name="employer3Contact" value="no" class="ml-4 mr-2">
+                        <label for="employer3ContactNo" class="inline-block mb-0">No</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="employer3Responsibilities">Responsibilities:</label>
+                    <textarea id="employer3Responsibilities" name="employer3Responsibilities"></textarea>
+                </div>
+            </div>
+
+            <div id="references-section">
+                <h2>References</h2>
+                <p class="text-gray-600 mb-4">Please provide three professional references who are not relatives.</p>
+
+                <h3>Reference 1</h3>
+                <div class="form-group">
+                    <label for="ref1Name">Name:</label>
+                    <input type="text" id="ref1Name" name="ref1Name">
+                </div>
+                <div class="form-group">
+                    <label for="ref1Relationship">Relationship:</label>
+                    <input type="text" id="ref1Relationship" name="ref1Relationship">
+                </div>
+                <div class="form-group">
+                    <label for="ref1Phone">Phone Number:</label>
+                    <input type="tel" id="ref1Phone" name="ref1Phone">
+                </div>
+                <div class="form-group">
+                    <label for="ref1Email">Email Address:</label>
+                    <input type="email" id="ref1Email" name="ref1Email">
+                </div>
+
+                <h3>Reference 2</h3>
+                <div class="form-group">
+                    <label for="ref2Name">Name:</label>
+                    <input type="text" id="ref2Name" name="ref2Name">
+                </div>
+                <div class="form-group">
+                    <label for="ref2Relationship">Relationship:</label>
+                    <input type="text" id="ref2Relationship" name="ref2Relationship">
+                </div>
+                <div class="form-group">
+                    <label for="ref2Phone">Phone Number:</label>
+                    <input type="tel" id="ref2Phone" name="ref2Phone">
+                </div>
+                <div class="form-group">
+                    <label for="ref2Email">Email Address:</label>
+                    <input type="email" id="ref2Email" name="ref2Email">
+                </div>
+
+                <h3>Reference 3</h3>
+                <div class="form-group">
+                    <label for="ref3Name">Name:</label>
+                    <input type="text" id="ref3Name" name="ref3Name">
+                </div>
+                <div class="form-group">
+                    <label for="ref3Relationship">Relationship:</label>
+                    <input type="text" id="ref3Relationship" name="ref3Relationship">
+                </div>
+                <div class="form-group">
+                    <label for="ref3Phone">Phone Number:</label>
+                    <input type="tel" id="ref3Phone" name="ref3Phone">
+                </div>
+                <div class="form-group">
+                    <label for="ref3Email">Email Address:</label>
+                    <input type="email" id="ref3Email" name="ref3Email">
+                </div>
+            </div>
+
+            <div id="disclaimer-signature-section">
+                <h2>Disclaimer and Signature</h2>
+                <div class="form-group">
+                    <div class="checkbox-group align-start">
+                        <input type="checkbox" id="disclaimer1" name="disclaimer1" required class="mt-1">
+                        <label for="disclaimer1" class="disclaimer-text ml-2">
+                            I certify that the information provided in this application is true and complete to the best of my knowledge. I understand that any false or misleading information given in my application or interview(s) may result in my disqualification from employment or termination if discovered after employment.
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group align-start">
+                        <input type="checkbox" id="disclaimer2" name="disclaimer2" required class="mt-1">
+                        <label for="disclaimer2" class="disclaimer-text ml-2">
+                            I authorize The Ram Shack to contact my previous employers, references, and educational institutions to verify the information provided and to inquire about my work performance and character. I release The Ram Shack and any references from liability for any information provided.
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group align-start">
+                        <input type="checkbox" id="disclaimer3" name="disclaimer3" required class="mt-1">
+                        <label for="disclaimer3" class="disclaimer-text ml-2">
+                            I understand that this application does not constitute an an offer of employment. If hired, I agree to abide by all policies, rules, and regulations of The Ram Shack. I understand that my employment will be "at-will," meaning that either I or The Ram Shack may terminate the employment relationship at any time, with or without cause or notice, for any reason not prohibited by law.
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group mt-6">
+                    <label for="signatureCanvas">Signature:</label>
+                    <canvas id="signatureCanvas"></canvas>
+                    <button type="button" id="clearSignature" class="clear-button">Clear Signature</button>
+                </div>
+                <div class="form-group">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" name="date">
+                </div>
+            </div>
+
+            <button type="submit" class="submit-button" id="submitButton">Submit Application</button>
+            <p id="submitMessage" class="submit-message"></p>
+            <p id="warningMessage" class="warning-message"></p>
+        </form>
+
+        <div id="downloadSection" class="download-section hidden">
+            <p>Your application has been successfully submitted!</p>
+            <p>Click the button below to download a copy of your filled application as a PDF:</p>
+            <button id="downloadApplicationPDFBtn" class="download-button">Download Application as PDF</button>
+            <p id="downloadStatus" class="download-status hidden">Generating PDF...</p>
+            <p class="mt-4">Please submit this downloaded PDF file to your Google Site.</p>
+        </div>
+
+        <div id="thank-you-section">
+            <p class="thank-you">Thank you for your interest in The Ram Shack!</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase configuration (provided by Canvas environment)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let currentUserId = null;
+        let isAuthReady = false; // Flag to ensure auth state is known
+
+        // Authenticate user and set up auth state listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                console.log("Auth state changed: User is logged in with UID:", currentUserId);
+            } else {
+                console.log("Auth state changed: No user logged in. Attempting anonymous sign-in or custom token.");
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                        currentUserId = auth.currentUser.uid;
+                        console.log("Signed in with custom token:", currentUserId);
+                    } else {
+                        await signInAnonymously(auth);
+                        currentUserId = auth.currentUser.uid;
+                        console.log("Signed in anonymously:", currentUserId);
+                    }
+                } catch (error) {
+                    console.error("Firebase authentication error during onAuthStateChanged:", error);
+                }
+            }
+            isAuthReady = true;
+        });
+
+
+        // Get the canvas element and its 2D rendering context
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        const clearButton = document.getElementById('clearSignature');
+        const form = document.getElementById('jobApplicationForm');
+        const submitButton = document.getElementById('submitButton'); // Get the submit button
+        const submitMessageElement = document.getElementById('submitMessage');
+        const warningMessageElement = document.getElementById('warningMessage');
+        const downloadSection = document.getElementById('downloadSection');
+        const downloadApplicationPDFBtn = document.getElementById('downloadApplicationPDFBtn'); // Changed ID for PDF button
+        const downloadStatusElement = document.getElementById('downloadStatus');
+        const thankYouSection = document.getElementById('thank-you-section'); // Get thank you section
+
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // Function to set canvas dimensions correctly for responsiveness
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1f2937'; // Dark gray color for signature
+        }
+
+        // Initial resize and on window resize
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas);
+
+        function draw(e) {
+            if (!isDrawing) return; // Stop the fn from running when not moused down
+
+            // Get coordinates based on event type (mouse or touch)
+            let clientX, clientY;
+            if (e.touches) { // Touch event
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else { // Mouse event
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            // Calculate offset relative to the canvas
+            const rect = canvas.getBoundingClientRect();
+            const offsetX = clientX - rect.left;
+            const offsetY = clientY - rect.top;
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(offsetX, offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [offsetX, offsetY];
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            [lastX, lastY] = [e.clientX - rect.left, e.clientY - rect.top];
+        });
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false); // Stop drawing if mouse leaves canvas
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            [lastX, lastY] = [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top];
+        }, { passive: false }); // Use passive: false to allow preventDefault
+
+        canvas.addEventListener('touchmove', draw, { passive: false }); // Use passive: false to allow preventDefault
+
+        canvas.addEventListener('touchend', () => isDrawing = false);
+        canvas.addEventListener('touchcancel', () => isDrawing = false); // For when touch is interrupted
+
+        // Clear signature button
+        clearButton.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent default form submission
+
+            // Clear previous messages and hide download section
+            submitMessageElement.textContent = '';
+            warningMessageElement.textContent = '';
+            downloadSection.classList.add('hidden');
+
+            // Check if authentication is ready
+            if (!isAuthReady || !currentUserId) {
+                warningMessageElement.textContent = 'Authentication not ready. Please wait a moment and try again.';
+                console.warn("Submission attempted: Authentication not ready or user not logged in.");
+                return;
+            }
+
+            // Check if all required fields are filled, including disclaimers
+            if (!form.checkValidity()) {
+                warningMessageElement.textContent = 'Please fill out all required fields and acknowledge all disclaimers before submitting.';
+                form.reportValidity(); // Show browser's validation messages
+                return;
+            }
+
+            submitMessageElement.textContent = 'Submitting application...';
+            submitMessageElement.style.color = '#3b82f6'; // Blue for submitting status
+
+            // Collect all form data
+            const formData = new FormData(form);
+            const applicationData = {};
+
+            // Helper function to get value for radio buttons
+            const getRadioValue = (name) => {
+                const radios = document.querySelectorAll(`input[name="${name}"]`);
+                for (const radio of radios) {
+                    if (radio.checked) {
+                        return radio.value;
+                    }
+                }
+                return '';
+            };
+
+            // Personal Information
+            applicationData.personalInfo = {
+                fullName: formData.get('fullName') || '',
+                address: formData.get('address') || '',
+                cityStateZip: formData.get('cityStateZip') || '',
+                phoneNumber: formData.get('phoneNumber') || '',
+                emailAddress: formData.get('emailAddress') || ''
+            };
+
+            // Position Applied For
+            applicationData.positionInfo = {
+                positionDesired: formData.get('positionDesired') || '',
+                dateAvailable: formData.get('dateAvailable') || '',
+                desiredSalary: formData.get('desiredSalary') || '',
+                authorizedToWork: getRadioValue('authorized') || '',
+                employedBefore: getRadioValue('employedBefore') || '',
+                employedBeforeWhen: formData.get('employedBeforeWhen') || ''
+            };
+
+            // Education
+            applicationData.education = {
+                highSchool: {
+                    name: formData.get('hsName') || '',
+                    location: formData.get('hsLocation') || '',
+                    datesFrom: formData.get('hsDatesFrom') || '',
+                    datesTo: formData.get('hsDatesTo') || '',
+                    graduated: getRadioValue('hsGraduated') || '',
+                    degree: formData.get('hsDegree') || ''
+                },
+                college: {
+                    name: formData.get('collegeName') || '',
+                    location: formData.get('collegeLocation') || '',
+                    datesFrom: formData.get('collegeDatesFrom') || '',
+                    datesTo: formData.get('collegeDatesTo') || '',
+                    graduated: getRadioValue('collegeGraduated') || '',
+                    degree: formData.get('collegeDegree') || ''
+                },
+                otherEducation: {
+                    name: formData.get('otherName') || '',
+                    location: formData.get('otherLocation') || '',
+                    datesFrom: formData.get('otherDatesFrom') || '',
+                    datesTo: formData.get('otherDatesTo') || '',
+                    credential: formData.get('otherCredential') || ''
+                }
+            };
+
+            // Work Experience
+            applicationData.workExperience = [];
+            for (let i = 1; i <= 3; i++) {
+                applicationData.workExperience.push({
+                    company: formData.get(`employer${i}Company`) || '',
+                    title: formData.get(`employer${i}Title`) || '',
+                    datesFrom: formData.get(`employer${i}DatesFrom`) || '',
+                    datesTo: formData.get(`employer${i}DatesTo`) || '',
+                    supervisor: formData.get(`employer${i}Supervisor`) || '',
+                    phone: formData.get(`employer${i}Phone`) || '',
+                    mayContact: getRadioValue(`employer${i}Contact`) || '',
+                    responsibilities: formData.get(`employer${i}Responsibilities`) || ''
+                });
+            }
+
+            // References
+            applicationData.references = [];
+            for (let i = 1; i <= 3; i++) {
+                applicationData.references.push({
+                    name: formData.get(`ref${i}Name`) || '',
+                    relationship: formData.get(`ref${i}Relationship`) || '',
+                    phone: formData.get(`ref${i}Phone`) || '',
+                    email: formData.get(`ref${i}Email`) || ''
+                });
+            }
+
+            // Disclaimers
+            applicationData.disclaimers = {
+                disclaimer1: formData.get('disclaimer1') === 'on',
+                disclaimer2: formData.get('disclaimer2') === 'on',
+                disclaimer3: formData.get('disclaimer3') === 'on'
+            };
+
+            // Signature and Date
+            applicationData.signature = canvas.toDataURL('image/png'); // Get signature as base64 data URL
+            applicationData.submissionDate = formData.get('date') || '';
+
+            // Firestore document reference
+            const docId = 'ram_shack_application'; // Fixed doc ID for this application
+            const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/job_applications`, docId);
+
+            try {
+                await setDoc(docRef, applicationData);
+                submitMessageElement.textContent = 'Application submitted successfully!';
+                submitMessageElement.style.color = '#10b981'; // Green for success
+
+                // Hide the submit button and messages, then show the download section
+                submitButton.classList.add('hide-for-capture');
+                submitMessageElement.classList.add('hide-for-capture');
+                warningMessageElement.classList.add('hide-for-capture');
+                downloadSection.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error submitting application to Firestore: ", error);
+                warningMessageElement.textContent = 'Submission failed. Please try again. Error: ' + error.message;
+                submitMessageElement.textContent = ''; // Clear submitting message
+            } finally {
+                // Clear messages after a few seconds (except the download section)
+                setTimeout(() => {
+                    submitMessageElement.textContent = '';
+                    warningMessageElement.textContent = '';
+                }, 10000);
+            }
+        });
+
+        // Helper function to introduce a delay
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        // --- Download PDF Logic (Revised for Direct PDF Drawing) ---
+        downloadApplicationPDFBtn.addEventListener('click', async () => {
+            downloadApplicationPDFBtn.disabled = true;
+            downloadStatusElement.classList.remove('hidden');
+            downloadStatusElement.textContent = 'Generating PDF... This may take a moment.';
+            console.log("Starting PDF generation...");
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 size
+
+                const margin = 15; // 15mm margin on all sides
+                const pdfPageWidth = doc.internal.pageSize.getWidth();
+                const pdfPageHeight = doc.internal.pageSize.getHeight();
+                const usablePageWidth = pdfPageWidth - (2 * margin);
+
+                let currentY = margin; // This is the top position for the *next* content on the current PDF page
+                const lineHeight = 7; // Standard line height for text
+                const sectionSpacing = 10; // Space between major sections
+                const subSectionSpacing = 7; // Space between sub-sections (e.g., High School, College)
+                const fieldSpacing = 5; // Space between individual form fields
+
+                // Helper to add a new page if content exceeds current page height
+                const addPageIfNeeded = (heightNeeded) => {
+                    if (currentY + heightNeeded > pdfPageHeight - margin) {
+                        doc.addPage();
+                        currentY = margin; // Reset Y for new page
+                    }
+                };
+
+                // Helper to add a title
+                const addTitle = (text) => {
+                    addPageIfNeeded(lineHeight * 2); // Estimate height for title + some space
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(22);
+                    doc.setTextColor(31, 41, 55); // text-gray-900
+                    doc.text(text, pdfPageWidth / 2, currentY, { align: 'center' });
+                    currentY += lineHeight * 2;
+                    doc.setDrawColor(229, 231, 235); // border-gray-200
+                    doc.line(margin, currentY - lineHeight / 2, pdfPageWidth - margin, currentY - lineHeight / 2); // Underline
+                    currentY += lineHeight;
+                };
+
+                // Helper to add a section heading
+                const addSectionHeading = (text) => {
+                    addPageIfNeeded(lineHeight * 1.5); // Estimate height for heading
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(16);
+                    doc.setTextColor(55, 65, 81); // text-gray-800
+                    doc.text(text, margin, currentY);
+                    currentY += lineHeight * 1.5;
+                    doc.setDrawColor(229, 231, 235); // border-gray-200
+                    doc.line(margin, currentY - lineHeight / 2, pdfPageWidth - margin, currentY - lineHeight / 2); // Underline
+                    currentY += lineHeight;
+                };
+
+                // Helper to add a sub-section heading
+                const addSubSectionHeading = (text) => {
+                    addPageIfNeeded(lineHeight); // Estimate height for sub-heading
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(14);
+                    doc.setTextColor(75, 85, 99); // text-gray-700
+                    doc.text(text, margin, currentY);
+                    currentY += lineHeight + 3; // Add a bit more space after sub-heading
+                };
+
+                // Helper to add a field and its value
+                const addField = (label, value) => {
+                    const text = `${label}: ${value || 'N/A'}`;
+                    const splitText = doc.splitTextToSize(text, usablePageWidth - 20); // Allow some padding for text
+                    const textHeight = splitText.length * doc.getLineHeight() / doc.internal.scaleFactor;
+
+                    addPageIfNeeded(textHeight + fieldSpacing);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(11);
+                    doc.setTextColor(31, 41, 55); // text-gray-900
+                    doc.text(splitText, margin + 5, currentY); // Indent slightly
+                    currentY += textHeight + fieldSpacing;
+                };
+
+                // Retrieve the submitted application data
+                const formData = new FormData(form);
+                const applicationData = {};
+
+                const getRadioValue = (name) => {
+                    const radios = document.querySelectorAll(`input[name="${name}"]`);
+                    for (const radio of radios) {
+                        if (radio.checked) {
+                            return radio.value;
+                        }
+                    }
+                    return '';
+                };
+
+                applicationData.personalInfo = {
+                    fullName: formData.get('fullName') || '',
+                    address: formData.get('address') || '',
+                    cityStateZip: formData.get('cityStateZip') || '',
+                    phoneNumber: formData.get('phoneNumber') || '',
+                    emailAddress: formData.get('emailAddress') || ''
+                };
+
+                applicationData.positionInfo = {
+                    positionDesired: formData.get('positionDesired') || '',
+                    dateAvailable: formData.get('dateAvailable') || '',
+                    desiredSalary: formData.get('desiredSalary') || '',
+                    authorizedToWork: getRadioValue('authorized') || '',
+                    employedBefore: getRadioValue('employedBefore') || '',
+                    employedBeforeWhen: formData.get('employedBeforeWhen') || ''
+                };
+
+                applicationData.education = {
+                    highSchool: {
+                        name: formData.get('hsName') || '',
+                        location: formData.get('hsLocation') || '',
+                        datesFrom: formData.get('hsDatesFrom') || '',
+                        datesTo: formData.get('hsDatesTo') || '',
+                        graduated: getRadioValue('hsGraduated') || '',
+                        degree: formData.get('hsDegree') || ''
+                    },
+                    college: {
+                        name: formData.get('collegeName') || '',
+                        location: formData.get('collegeLocation') || '',
+                        datesFrom: formData.get('collegeDatesFrom') || '',
+                        datesTo: formData.get('collegeDatesTo') || '',
+                        graduated: getRadioValue('collegeGraduated') || '',
+                        degree: formData.get('collegeDegree') || ''
+                    },
+                    otherEducation: {
+                        name: formData.get('otherName') || '',
+                        location: formData.get('otherLocation') || '',
+                        datesFrom: formData.get('otherDatesFrom') || '',
+                        datesTo: formData.get('otherDatesTo') || '',
+                        credential: formData.get('otherCredential') || ''
+                    }
+                };
+
+                applicationData.workExperience = [];
+                for (let i = 1; i <= 3; i++) {
+                    applicationData.workExperience.push({
+                        company: formData.get(`employer${i}Company`) || '',
+                        title: formData.get(`employer${i}Title`) || '',
+                        datesFrom: formData.get(`employer${i}DatesFrom`) || '',
+                        datesTo: formData.get(`employer${i}DatesTo`) || '',
+                        supervisor: formData.get(`employer${i}Supervisor`) || '',
+                        phone: formData.get(`employer${i}Phone`) || '',
+                        mayContact: getRadioValue(`employer${i}Contact`) || '',
+                        responsibilities: formData.get(`employer${i}Responsibilities`) || ''
+                    });
+                }
+
+                applicationData.references = [];
+                for (let i = 1; i <= 3; i++) {
+                    applicationData.references.push({
+                        name: formData.get(`ref${i}Name`) || '',
+                        relationship: formData.get(`ref${i}Relationship`) || '',
+                        phone: formData.get(`ref${i}Phone`) || '',
+                        email: formData.get(`ref${i}Email`) || ''
+                    });
+                }
+
+                applicationData.disclaimers = {
+                    disclaimer1: formData.get('disclaimer1') === 'on',
+                    disclaimer2: formData.get('disclaimer2') === 'on',
+                    disclaimer3: formData.get('disclaimer3') === 'on'
+                };
+
+                applicationData.signature = canvas.toDataURL('image/png');
+                applicationData.submissionDate = formData.get('date') || '';
+
+
+                // --- Add Content to PDF ---
+
+                // Application Header
+                addTitle('Ram Shack Job Application');
+                addPageIfNeeded(lineHeight);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(107, 114, 128); // text-gray-600
+                doc.text('Please complete this application form accurately and thoroughly.', pdfPageWidth / 2, currentY, { align: 'center' });
+                currentY += lineHeight + sectionSpacing;
+
+                // Personal Information
+                addSectionHeading('Personal Information');
+                addField('Full Name', applicationData.personalInfo.fullName);
+                addField('Address', applicationData.personalInfo.address);
+                addField('City, State, Zip', applicationData.personalInfo.cityStateZip);
+                addField('Phone Number', applicationData.personalInfo.phoneNumber);
+                addField('Email Address', applicationData.personalInfo.emailAddress);
+                currentY += sectionSpacing;
+
+                // Position Applied For
+                addSectionHeading('Position Applied For');
+                addField('Position Desired', applicationData.positionInfo.positionDesired);
+                addField('Date Available', applicationData.positionInfo.dateAvailable);
+                addField('Desired Salary', applicationData.positionInfo.desiredSalary);
+                addField('Legally authorized to work in US', applicationData.positionInfo.authorizedToWork === 'yes' ? 'Yes' : 'No');
+                addField('Employed by Ram Shack before', applicationData.positionInfo.employedBefore === 'yes' ? 'Yes' : 'No');
+                if (applicationData.positionInfo.employedBefore === 'yes') {
+                    addField('If yes, when', applicationData.positionInfo.employedBeforeWhen);
+                }
+                currentY += sectionSpacing;
+
+                // Education
+                addSectionHeading('Education');
+                currentY += subSectionSpacing;
+
+                addSubSectionHeading('High School');
+                addField('Name of High School', applicationData.education.highSchool.name);
+                addField('Location', applicationData.education.highSchool.location);
+                addField('Dates Attended', `${applicationData.education.highSchool.datesFrom} to ${applicationData.education.highSchool.datesTo}`);
+                addField('Graduated', applicationData.education.highSchool.graduated === 'yes' ? 'Yes' : 'No');
+                if (applicationData.education.highSchool.graduated === 'yes') {
+                    addField('Degree/Diploma', applicationData.education.highSchool.degree);
+                }
+                currentY += subSectionSpacing;
+
+                addSubSectionHeading('College/University');
+                addField('Name of Institution', applicationData.education.college.name);
+                addField('Location', applicationData.education.college.location);
+                addField('Dates Attended', `${applicationData.education.college.datesFrom} to ${applicationData.education.college.datesTo}`);
+                addField('Graduated', applicationData.education.college.graduated === 'yes' ? 'Yes' : 'No');
+                if (applicationData.education.college.graduated === 'yes') {
+                    addField('Degree/Major', applicationData.education.college.degree);
+                }
+                currentY += subSectionSpacing;
+
+                addSubSectionHeading('Other (Trade School, Certifications, etc.)');
+                addField('Name of Institution/Program', applicationData.education.otherEducation.name);
+                addField('Location', applicationData.education.otherEducation.location);
+                addField('Dates Attended', `${applicationData.education.otherEducation.datesFrom} to ${applicationData.education.otherEducation.datesTo}`);
+                addField('Certificate/Credential', applicationData.education.otherEducation.credential);
+                currentY += sectionSpacing;
+
+                // Work Experience
+                addSectionHeading('Work Experience');
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(107, 114, 128); // text-gray-600
+                addPageIfNeeded(lineHeight);
+                doc.text('Please list your last three employers, starting with the most recent.', margin, currentY);
+                currentY += lineHeight + subSectionSpacing;
+
+                applicationData.workExperience.forEach((employer, index) => {
+                    addSubSectionHeading(`Employer ${index + 1}`);
+                    addField('Company Name', employer.company);
+                    addField('Job Title', employer.title);
+                    addField('Dates Employed', `${employer.datesFrom} to ${employer.datesTo}`);
+                    addField('Supervisor\'s Name', employer.supervisor);
+                    addField('Phone Number', employer.phone);
+                    addField('May we contact this employer', employer.mayContact === 'yes' ? 'Yes' : 'No');
+                    addField('Responsibilities', employer.responsibilities);
+                    currentY += subSectionSpacing;
+                });
+                currentY -= subSectionSpacing; // Adjust for last loop iteration
+                currentY += sectionSpacing;
+
+                // References
+                addSectionHeading('References');
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(107, 114, 128); // text-gray-600
+                addPageIfNeeded(lineHeight);
+                doc.text('Please provide three professional references who are not relatives.', margin, currentY);
+                currentY += lineHeight + subSectionSpacing;
+
+                applicationData.references.forEach((ref, index) => {
+                    addSubSectionHeading(`Reference ${index + 1}`);
+                    addField('Name', ref.name);
+                    addField('Relationship', ref.relationship);
+                    addField('Phone Number', ref.phone);
+                    addField('Email Address', ref.email);
+                    currentY += subSectionSpacing;
+                });
+                currentY -= subSectionSpacing; // Adjust for last loop iteration
+                currentY += sectionSpacing;
+
+                // Disclaimer and Signature
+                addSectionHeading('Disclaimer and Signature');
+                currentY += subSectionSpacing;
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(75, 85, 99); // text-gray-700
+
+                const disclaimers = [
+                    { label: 'disclaimer1', text: 'I certify that the information provided in this application is true and complete to the best of my knowledge. I understand that any false or misleading information given in my application or interview(s) may result in my disqualification from employment or termination if discovered after employment.' },
+                    { label: 'disclaimer2', text: 'I authorize The Ram Shack to contact my previous employers, references, and educational institutions to verify the information provided and to inquire about my work performance and character. I release The Ram Shack and any references from liability for any information provided.' },
+                    { label: 'disclaimer3', text: 'I understand that this application does not constitute an an offer of employment. If hired, I agree to abide by all policies, rules, and regulations of The Ram Shack. I understand that my employment will be "at-will," meaning that either I or The Ram Shack may terminate the employment relationship at any time, with or without cause or notice, for any reason not prohibited by law.' }
+                ];
+
+                disclaimers.forEach((disclaimer) => {
+                    const disclaimerText = `[${applicationData.disclaimers[disclaimer.label] ? 'X' : ' '}] ${disclaimer.text}`;
+                    const splitDisclaimer = doc.splitTextToSize(disclaimerText, usablePageWidth - 10);
+                    const disclaimerHeight = splitDisclaimer.length * doc.getLineHeight() / doc.internal.scaleFactor;
+                    addPageIfNeeded(disclaimerHeight + fieldSpacing);
+                    doc.text(splitDisclaimer, margin, currentY);
+                    currentY += disclaimerHeight + fieldSpacing;
+                });
+                currentY += subSectionSpacing;
+
+                // Add Signature Image
+                addPageIfNeeded(40 + fieldSpacing); // Estimate height for signature
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(11);
+                doc.setTextColor(31, 41, 55);
+                doc.text('Signature:', margin, currentY);
+                currentY += lineHeight;
+
+                // Capture signature canvas
+                const signatureCanvas = document.getElementById('signatureCanvas');
+                const signatureImgData = await html2canvas(signatureCanvas, {
+                    scale: 2, // Keep scale for signature quality
+                    backgroundColor: '#ffffff',
+                    useCORS: true,
+                    logging: false
+                }).then(canvas => canvas.toDataURL('image/png'));
+
+                const signatureWidth = 70; // mm
+                const signatureHeight = (signatureCanvas.height / signatureCanvas.width) * signatureWidth; // Maintain aspect ratio
+
+                doc.addImage(signatureImgData, 'PNG', margin, currentY, signatureWidth, signatureHeight);
+                currentY += signatureHeight + fieldSpacing;
+
+                // Add Date
+                addField('Date', applicationData.submissionDate);
+                currentY += sectionSpacing;
+
+
+                // Determine filename
+                const fullNameInput = document.getElementById('fullName');
+                const fileName = fullNameInput && fullNameInput.value ?
+                                 `${fullNameInput.value.replace(/[^a-zA-Z0-9]/g, '_')}_application.pdf` :
+                                 'ram_shack_application.pdf';
+
+                doc.save(fileName);
+                console.log("PDF saved successfully.");
+                downloadStatusElement.textContent = 'Download complete!';
+            } catch (error) {
+                console.error('Error generating or downloading PDF:', error);
+                downloadStatusElement.textContent = 'Download failed. Please try again. Error: ' + error.message;
+            } finally {
+                downloadApplicationPDFBtn.disabled = false;
+                downloadStatusElement.classList.add('hidden'); // Hide status after completion/error
+                downloadStatusElement.textContent = 'Generating PDF...'; // Reset for next time
+            }
+        });
+    </script>
+</body>
+</html>
