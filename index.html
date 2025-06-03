@@ -542,6 +542,10 @@
                     <input type="text" id="ref3Name" name="ref3Name">
                 </div>
                 <div class="form-group">
+                    <label for="ref3Title">Title:</label>
+                    <input type="text" id="ref3Title" name="ref3Title">
+                </div>
+                <div class="form-group">
                     <label for="ref3Relationship">Relationship:</label>
                     <input type="text" id="ref3Relationship" name="ref3Relationship">
                 </div>
@@ -592,27 +596,21 @@
                 </div>
             </div>
 
-            <button type="submit" class="submit-button" id="submitButton">Submit Application</button>
-            <p id="submitMessage" class="submit-message"></p>
-            <p id="warningMessage" class="warning-message"></p>
+            <button type="submit" class="submit-button" id="generatePdfBtn">Generate Application PDF</button>
+            <p id="statusMessage" class="submit-message"></p>
         </form>
 
-        <div id="downloadSection" class="download-section hidden">
-            <p>Your application has been successfully submitted!</p>
-            <p>Click the button below to download a copy of your filled application as a PDF:</p>
-            <button id="downloadApplicationPDFBtn" class="download-button">Download Application as PDF</button>
-            <p id="downloadStatus" class="download-status hidden">Generating PDF...</p>
-            <p class="mt-4">Please submit this downloaded PDF file to your Google Site.</p>
-        </div>
-
         <div id="thank-you-section">
-            <p class="thank-you">Thank you for your interest in The Ram Shack!</p>
+            <p class="thank-you">Thank you for completing the application!</p>
         </div>
     </div>
 
     <div id="onScreenError" style="display: none;"></div>
 
-    <script type="module">
+    <!-- Hidden canvas for rendering signature -->
+    <canvas id="signatureCanvas" style="display: none;"></canvas>
+
+    <script>
         // Function to display on-screen errors
         function displayOnScreenError(message) {
             const errorDiv = document.getElementById('onScreenError');
@@ -623,99 +621,37 @@
             }, 10000); // Hide after 10 seconds
         }
 
-        // Firebase imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase configuration (provided by Canvas environment, or default)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Initialize Firebase
-        let app, db, auth;
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            console.log("Firebase initialized successfully.");
-        } catch (e) {
-            console.error("Error initializing Firebase:", e);
-            displayOnScreenError("Firebase initialization failed. Check console for details.");
-        }
-
-        let currentUserId = null;
-        let isAuthReady = false; // Flag to ensure auth state is known
-
-        // Authenticate user and set up auth state listener
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUserId = user.uid;
-                console.log("Auth state changed: User is logged in with UID:", currentUserId);
-            } else {
-                console.log("Auth state changed: No user logged in. Attempting anonymous sign-in or custom token.");
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                        currentUserId = auth.currentUser.uid;
-                        console.log("Signed in with custom token:", currentUserId);
-                    } else {
-                        await signInAnonymously(auth);
-                        currentUserId = auth.currentUser.uid;
-                        console.log("Signed in anonymously:", currentUserId);
-                    }
-                } catch (error) {
-                    console.error("Firebase authentication error during onAuthStateChanged:", error);
-                    displayOnScreenError("Authentication failed. PDF download might not work.");
-                }
-            }
-            isAuthReady = true;
-            console.log("Firebase authentication state ready. User ID:", currentUserId);
-        });
-
         // Get elements
         const form = document.getElementById('jobApplicationForm');
-        const submitButton = document.getElementById('submitButton');
-        const submitMessageElement = document.getElementById('submitMessage');
-        const warningMessageElement = document.getElementById('warningMessage');
-        const downloadSection = document.getElementById('downloadSection');
-        const downloadApplicationPDFBtn = document.getElementById('downloadApplicationPDFBtn');
-        const downloadStatusElement = document.getElementById('downloadStatus');
-        const typedSignatureInput = document.getElementById('typedSignature'); // New signature input
+        const generatePdfBtn = document.getElementById('generatePdfBtn');
+        const statusMessageElement = document.getElementById('statusMessage');
+        const typedSignatureInput = document.getElementById('typedSignature');
+        const signatureCanvas = document.getElementById('signatureCanvas');
+        const signatureCtx = signatureCanvas.getContext('2d');
 
-        // Handle form submission
+        // Handle form submission (now PDF generation)
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault(); // Prevent default form submission
-                console.log("Form submission initiated.");
+                console.log("PDF generation initiated.");
 
-                // Clear previous messages and hide download section
-                submitMessageElement.textContent = '';
-                warningMessageElement.textContent = '';
-                downloadSection.classList.add('hidden');
-
-                // Check if authentication is ready
-                if (!isAuthReady || !currentUserId) {
-                    const msg = 'Authentication not ready. Please wait a moment and try again.';
-                    warningMessageElement.textContent = msg;
-                    displayOnScreenError(msg);
-                    console.warn("Submission attempted:", msg);
-                    return;
-                }
+                // Clear previous messages
+                statusMessageElement.textContent = '';
 
                 // Check if all required fields are filled, including disclaimers
                 if (!form.checkValidity()) {
-                    const msg = 'Please fill out all required fields and acknowledge all disclaimers before submitting.';
-                    warningMessageElement.textContent = msg;
+                    const msg = 'Please fill out all required fields and acknowledge all disclaimers before generating the PDF.';
+                    statusMessageElement.textContent = msg;
+                    statusMessageElement.style.color = '#ef4444'; // Red for warning
                     displayOnScreenError(msg);
                     form.reportValidity(); // Show browser's validation messages
                     console.warn("Form validation failed.");
                     return;
                 }
 
-                submitMessageElement.textContent = 'Submitting application...';
-                submitMessageElement.style.color = '#3b82f6'; // Blue for submitting status
-                submitButton.disabled = true; // Disable button during submission
+                statusMessageElement.textContent = 'Generating PDF... This may take a moment.';
+                statusMessageElement.style.color = '#3b82f6'; // Blue for status
+                generatePdfBtn.disabled = true; // Disable button during generation
 
                 // Collect all form data
                 const formData = new FormData(form);
@@ -815,47 +751,6 @@
                 applicationData.signature = typedSignatureInput.value || ''; // Get value from new input
                 applicationData.submissionDate = formData.get('date') || '';
 
-                // Firestore document reference
-                const docId = 'ram_shack_application'; // Fixed doc ID for this application
-                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/job_applications`, docId);
-
-                try {
-                    await setDoc(docRef, applicationData);
-                    submitMessageElement.textContent = 'Application submitted successfully!';
-                    submitMessageElement.style.color = '#10b981'; // Green for success
-                    console.log("Application data submitted to Firestore.");
-
-                    // Hide the submit button and messages, then show the download section
-                    submitButton.style.display = 'none'; // Use style.display to hide
-                    submitMessageElement.style.display = 'none';
-                    warningMessageElement.style.display = 'none';
-                    downloadSection.classList.remove('hidden');
-
-                } catch (error) {
-                    console.error("Error submitting application to Firestore: ", error);
-                    const msg = 'Submission failed. Please try again. Error: ' + error.message;
-                    warningMessageElement.textContent = msg;
-                    displayOnScreenError(msg);
-                    submitMessageElement.textContent = ''; // Clear submitting message
-                } finally {
-                    submitButton.disabled = false; // Re-enable button
-                    // Clear messages after a few seconds (except the download section)
-                    setTimeout(() => {
-                        submitMessageElement.textContent = '';
-                        warningMessageElement.textContent = '';
-                    }, 10000);
-                }
-            });
-        }
-
-        // --- Download PDF Logic (Revised for Typed Signature) ---
-        if (downloadApplicationPDFBtn) {
-            downloadApplicationPDFBtn.addEventListener('click', async () => {
-                downloadApplicationPDFBtn.disabled = true;
-                downloadStatusElement.classList.remove('hidden');
-                downloadStatusElement.textContent = 'Generating PDF... This may take a moment.';
-                console.log("Starting PDF generation...");
-
                 try {
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 size
@@ -928,97 +823,6 @@
                         doc.text(splitText, margin + 5, currentY); // Indent slightly
                         currentY += textHeight + fieldSpacing;
                     };
-
-                    // Retrieve the submitted application data
-                    const formData = new FormData(form);
-                    const applicationData = {};
-
-                    const getRadioValue = (name) => {
-                        const radios = document.querySelectorAll(`input[name="${name}"]`);
-                        for (const radio of radios) {
-                            if (radio.checked) {
-                                return radio.value;
-                            }
-                        }
-                        return '';
-                    };
-
-                    applicationData.personalInfo = {
-                        fullName: formData.get('fullName') || '',
-                        address: formData.get('address') || '',
-                        cityStateZip: formData.get('cityStateZip') || '',
-                        phoneNumber: formData.get('phoneNumber') || '',
-                        emailAddress: formData.get('emailAddress') || ''
-                    };
-
-                    applicationData.positionInfo = {
-                        positionDesired: formData.get('positionDesired') || '',
-                        dateAvailable: formData.get('dateAvailable') || '',
-                        desiredSalary: formData.get('desiredSalary') || '',
-                        authorizedToWork: getRadioValue('authorized') || '',
-                        employedBefore: getRadioValue('employedBefore') || '',
-                        employedBeforeWhen: formData.get('employedBeforeWhen') || ''
-                    };
-
-                    applicationData.education = {
-                        highSchool: {
-                            name: formData.get('hsName') || '',
-                            location: formData.get('hsLocation') || '',
-                            datesFrom: formData.get('hsDatesFrom') || '',
-                            datesTo: formData.get('hsDatesTo') || '',
-                            graduated: getRadioValue('hsGraduated') || '',
-                            degree: formData.get('hsDegree') || ''
-                        },
-                        college: {
-                            name: formData.get('collegeName') || '',
-                            location: formData.get('collegeLocation') || '',
-                            datesFrom: formData.get('collegeDatesFrom') || '',
-                            datesTo: formData.get('collegeDatesTo') || '',
-                            graduated: getRadioValue('collegeGraduated') || '',
-                            degree: formData.get('collegeDegree') || ''
-                        },
-                        otherEducation: {
-                            name: formData.get('otherName') || '',
-                            location: formData.get('otherLocation') || '',
-                            datesFrom: formData.get('otherDatesFrom') || '',
-                            datesTo: formData.get('otherDatesTo') || '',
-                            credential: formData.get('otherCredential') || ''
-                        }
-                    };
-
-                    applicationData.workExperience = [];
-                    for (let i = 1; i <= 3; i++) {
-                        applicationData.workExperience.push({
-                            company: formData.get(`employer${i}Company`) || '',
-                            title: formData.get(`employer${i}Title`) || '',
-                            datesFrom: formData.get(`employer${i}DatesFrom`) || '',
-                            datesTo: formData.get(`employer${i}DatesTo`) || '',
-                            supervisor: formData.get(`employer${i}Supervisor`) || '',
-                            phone: formData.get(`employer${i}Phone`) || '',
-                            mayContact: getRadioValue(`employer${i}Contact`) || '',
-                            responsibilities: formData.get(`employer${i}Responsibilities`) || ''
-                        });
-                    }
-
-                    applicationData.references = [];
-                    for (let i = 1; i <= 3; i++) {
-                        applicationData.references.push({
-                            name: formData.get(`ref${i}Name`) || '',
-                            relationship: formData.get(`ref${i}Relationship`) || '',
-                            phone: formData.get(`ref${i}Phone`) || '',
-                            email: formData.get(`ref${i}Email`) || ''
-                        });
-                    }
-
-                    applicationData.disclaimers = {
-                        disclaimer1: formData.get('disclaimer1') === 'on',
-                        disclaimer2: formData.get('disclaimer2') === 'on',
-                        disclaimer3: formData.get('disclaimer3') === 'on'
-                    };
-
-                    applicationData.signature = typedSignatureInput.value || '';
-                    applicationData.submissionDate = formData.get('date') || '';
-
 
                     // --- Add Content to PDF ---
 
@@ -1150,7 +954,7 @@
                     });
                     currentY += subSectionSpacing;
 
-                    // Add Typed Signature to PDF
+                    // Add Typed Signature to PDF using canvas for cursive font
                     addPageIfNeeded(lineHeight * 2); // Estimate height for signature text
                     doc.setFont('helvetica', 'normal'); // Reset font for label
                     doc.setFontSize(11);
@@ -1158,11 +962,43 @@
                     doc.text('Signature:', margin, currentY);
                     currentY += lineHeight;
 
-                    doc.setFont('helvetica', 'bolditalic'); // Use bold italic for typed signature
-                    doc.setFontSize(16); // Larger font for signature
-                    doc.setTextColor(31, 41, 55);
-                    doc.text(applicationData.signature, margin + 5, currentY); // Indent slightly
-                    currentY += lineHeight * 1.5; // Space after signature
+                    // Render signature on hidden canvas
+                    const signatureText = applicationData.signature;
+                    const signatureFontSize = 48; // Adjust for desired size in canvas
+                    const signatureFont = `${signatureFontSize}px 'Dancing Script'`;
+
+                    signatureCtx.font = signatureFont;
+                    signatureCtx.fillStyle = '#1f2937'; // Match text color
+                    const textMetrics = signatureCtx.measureText(signatureText);
+                    const textWidth = textMetrics.width;
+                    const textHeight = signatureFontSize * 1.2; // Approximate height including ascenders/descenders
+
+                    signatureCanvas.width = textWidth;
+                    signatureCanvas.height = textHeight;
+                    signatureCtx.font = signatureFont; // Re-set font after canvas resize
+                    signatureCtx.fillStyle = '#1f2937';
+                    signatureCtx.textBaseline = 'top'; // Align text to the top of the canvas
+                    signatureCtx.fillText(signatureText, 0, 0); // Draw text at top-left
+
+                    const signatureImgData = signatureCanvas.toDataURL('image/png');
+
+                    // Calculate image dimensions for PDF
+                    const imgWidth = textWidth / doc.internal.scaleFactor; // Convert canvas pixels to PDF units (mm)
+                    const imgHeight = textHeight / doc.internal.scaleFactor;
+
+                    // Ensure image fits within usable page width, scale down if necessary
+                    const maxImgWidth = usablePageWidth - 10; // Allow some padding
+                    let finalImgWidth = imgWidth;
+                    let finalImgHeight = imgHeight;
+
+                    if (imgWidth > maxImgWidth) {
+                        finalImgWidth = maxImgWidth;
+                        finalImgHeight = (finalImgWidth / imgWidth) * imgHeight;
+                    }
+
+                    addPageIfNeeded(finalImgHeight + fieldSpacing);
+                    doc.addImage(signatureImgData, 'PNG', margin + 5, currentY, finalImgWidth, finalImgHeight);
+                    currentY += finalImgHeight + fieldSpacing;
 
                     // Add Date
                     addField('Date', applicationData.submissionDate);
@@ -1176,16 +1012,20 @@
 
                     doc.save(fileName);
                     console.log("PDF saved successfully.");
-                    downloadStatusElement.textContent = 'Download complete!';
+                    statusMessageElement.textContent = 'PDF generated and downloaded successfully!';
+                    statusMessageElement.style.color = '#10b981'; // Green for success
                 } catch (error) {
                     console.error('Error generating or downloading PDF:', error);
-                    const msg = 'Download failed. Please try again. Error: ' + error.message;
-                    downloadStatusElement.textContent = msg;
+                    const msg = 'PDF generation failed. Please try again. Error: ' + error.message;
+                    statusMessageElement.textContent = msg;
+                    statusMessageElement.style.color = '#ef4444'; // Red for error
                     displayOnScreenError(msg);
                 } finally {
-                    downloadApplicationPDFBtn.disabled = false;
-                    downloadStatusElement.classList.add('hidden'); // Hide status after completion/error
-                    downloadStatusElement.textContent = 'Generating PDF...'; // Reset for next time
+                    generatePdfBtn.disabled = false; // Re-enable button
+                    // Clear status message after a few seconds
+                    setTimeout(() => {
+                        statusMessageElement.textContent = '';
+                    }, 5000);
                 }
             });
         }
