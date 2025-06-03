@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ram Shack Job Application</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body {
@@ -102,28 +102,24 @@
             padding-top: 0; /* Reset padding from previous .disclaimer */
             border-top: none; /* Reset border from previous .disclaimer */
         }
-        /* Styles for the signature canvas */
-        #signatureCanvas {
-            border: 1px solid #d1d5db; /* border-gray-300 */
-            border-radius: 0.375rem; /* rounded-md */
-            background-color: #f9fafb; /* gray-50 */
-            cursor: crosshair;
-            touch-action: none; /* Prevent scrolling on touch */
-            width: 100%; /* Make canvas responsive */
-            height: 150px; /* Fixed height for signature area */
-        }
-        .clear-button {
-            margin-top: 0.5rem;
-            padding: 0.5rem 1rem;
-            background-color: #ef4444; /* red-500 */
-            color: white;
-            border: none;
+        /* Styles for the typed signature input */
+        .signature-input {
+            font-family: 'Dancing Script', cursive; /* Apply cursive font */
+            font-size: 2.2rem; /* Larger font size for signature look */
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
             border-radius: 0.375rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out;
+            background-color: #f9fafb;
+            color: #1f2937;
+            box-sizing: border-box;
+            width: 100%;
+            text-align: left; /* Keep text left-aligned like a signature */
+            min-height: 50px; /* Ensure enough height for the larger font */
         }
-        .clear-button:hover {
-            background-color: #dc2626; /* red-600 */
+        .signature-input::placeholder {
+            font-family: 'Inter', sans-serif; /* Placeholder in normal font */
+            font-size: 1rem;
+            color: #9ca3af;
         }
         .submit-button {
             margin-top: 2rem;
@@ -193,9 +189,19 @@
             font-size: 0.875rem;
             color: #4b5563;
         }
-        /* Styles to hide form elements that should NOT be in the image capture */
-        .hide-for-capture {
-            display: none !important;
+        /* On-screen error display */
+        #onScreenError {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.25rem;
+            z-index: 1000;
+            display: none; /* Hidden by default */
         }
     </style>
 </head>
@@ -577,9 +583,8 @@
                 </div>
 
                 <div class="form-group mt-6">
-                    <label for="signatureCanvas">Signature:</label>
-                    <canvas id="signatureCanvas"></canvas>
-                    <button type="button" id="clearSignature" class="clear-button">Clear Signature</button>
+                    <label for="typedSignature">Type your Signature (Full Name):</label>
+                    <input type="text" id="typedSignature" name="typedSignature" placeholder="Type your full name here" class="signature-input" required>
                 </div>
                 <div class="form-group">
                     <label for="date">Date:</label>
@@ -605,21 +610,39 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <div id="onScreenError" style="display: none;"></div>
+
     <script type="module">
+        // Function to display on-screen errors
+        function displayOnScreenError(message) {
+            const errorDiv = document.getElementById('onScreenError');
+            errorDiv.textContent = 'Error: ' + message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 10000); // Hide after 10 seconds
+        }
+
         // Firebase imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase configuration (provided by Canvas environment)
+        // Firebase configuration (provided by Canvas environment, or default)
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        let app, db, auth;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            console.log("Firebase initialized successfully.");
+        } catch (e) {
+            console.error("Error initializing Firebase:", e);
+            displayOnScreenError("Firebase initialization failed. Check console for details.");
+        }
 
         let currentUserId = null;
         let isAuthReady = false; // Flag to ensure auth state is known
@@ -643,339 +666,62 @@
                     }
                 } catch (error) {
                     console.error("Firebase authentication error during onAuthStateChanged:", error);
+                    displayOnScreenError("Authentication failed. PDF download might not work.");
                 }
             }
             isAuthReady = true;
+            console.log("Firebase authentication state ready. User ID:", currentUserId);
         });
 
-
-        // Get the canvas element and its 2D rendering context
-        const canvas = document.getElementById('signatureCanvas');
-        const ctx = canvas.getContext('2d');
-        const clearButton = document.getElementById('clearSignature');
+        // Get elements
         const form = document.getElementById('jobApplicationForm');
-        const submitButton = document.getElementById('submitButton'); // Get the submit button
+        const submitButton = document.getElementById('submitButton');
         const submitMessageElement = document.getElementById('submitMessage');
         const warningMessageElement = document.getElementById('warningMessage');
         const downloadSection = document.getElementById('downloadSection');
-        const downloadApplicationPDFBtn = document.getElementById('downloadApplicationPDFBtn'); // Changed ID for PDF button
+        const downloadApplicationPDFBtn = document.getElementById('downloadApplicationPDFBtn');
         const downloadStatusElement = document.getElementById('downloadStatus');
-        const thankYouSection = document.getElementById('thank-you-section'); // Get thank you section
-
-
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-
-        // Function to set canvas dimensions correctly for responsiveness
-        function resizeCanvas() {
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.lineWidth = 2;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#1f2937'; // Dark gray color for signature
-        }
-
-        // Initial resize and on window resize
-        window.addEventListener('load', resizeCanvas);
-        window.addEventListener('resize', resizeCanvas);
-
-        function draw(e) {
-            if (!isDrawing) return; // Stop the fn from running when not moused down
-
-            // Get coordinates based on event type (mouse or touch)
-            let clientX, clientY;
-            if (e.touches) { // Touch event
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else { // Mouse event
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            // Calculate offset relative to the canvas
-            const rect = canvas.getBoundingClientRect();
-            const offsetX = clientX - rect.left;
-            const offsetY = clientY - rect.top;
-
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(offsetX, offsetY);
-            ctx.stroke();
-            [lastX, lastY] = [offsetX, offsetY];
-        }
-
-        // Mouse events
-        canvas.addEventListener('mousedown', (e) => {
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            [lastX, lastY] = [e.clientX - rect.left, e.clientY - rect.top];
-        });
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', () => isDrawing = false);
-        canvas.addEventListener('mouseout', () => isDrawing = false); // Stop drawing if mouse leaves canvas
-
-        // Touch events
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevent scrolling
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            [lastX, lastY] = [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top];
-        }, { passive: false }); // Use passive: false to allow preventDefault
-
-        canvas.addEventListener('touchmove', draw, { passive: false }); // Use passive: false to allow preventDefault
-
-        canvas.addEventListener('touchend', () => isDrawing = false);
-        canvas.addEventListener('touchcancel', () => isDrawing = false); // For when touch is interrupted
-
-        // Clear signature button
-        clearButton.addEventListener('click', () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        });
+        const typedSignatureInput = document.getElementById('typedSignature'); // New signature input
 
         // Handle form submission
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Prevent default form submission
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault(); // Prevent default form submission
+                console.log("Form submission initiated.");
 
-            // Clear previous messages and hide download section
-            submitMessageElement.textContent = '';
-            warningMessageElement.textContent = '';
-            downloadSection.classList.add('hidden');
+                // Clear previous messages and hide download section
+                submitMessageElement.textContent = '';
+                warningMessageElement.textContent = '';
+                downloadSection.classList.add('hidden');
 
-            // Check if authentication is ready
-            if (!isAuthReady || !currentUserId) {
-                warningMessageElement.textContent = 'Authentication not ready. Please wait a moment and try again.';
-                console.warn("Submission attempted: Authentication not ready or user not logged in.");
-                return;
-            }
-
-            // Check if all required fields are filled, including disclaimers
-            if (!form.checkValidity()) {
-                warningMessageElement.textContent = 'Please fill out all required fields and acknowledge all disclaimers before submitting.';
-                form.reportValidity(); // Show browser's validation messages
-                return;
-            }
-
-            submitMessageElement.textContent = 'Submitting application...';
-            submitMessageElement.style.color = '#3b82f6'; // Blue for submitting status
-
-            // Collect all form data
-            const formData = new FormData(form);
-            const applicationData = {};
-
-            // Helper function to get value for radio buttons
-            const getRadioValue = (name) => {
-                const radios = document.querySelectorAll(`input[name="${name}"]`);
-                for (const radio of radios) {
-                    if (radio.checked) {
-                        return radio.value;
-                    }
+                // Check if authentication is ready
+                if (!isAuthReady || !currentUserId) {
+                    const msg = 'Authentication not ready. Please wait a moment and try again.';
+                    warningMessageElement.textContent = msg;
+                    displayOnScreenError(msg);
+                    console.warn("Submission attempted:", msg);
+                    return;
                 }
-                return '';
-            };
 
-            // Personal Information
-            applicationData.personalInfo = {
-                fullName: formData.get('fullName') || '',
-                address: formData.get('address') || '',
-                cityStateZip: formData.get('cityStateZip') || '',
-                phoneNumber: formData.get('phoneNumber') || '',
-                emailAddress: formData.get('emailAddress') || ''
-            };
-
-            // Position Applied For
-            applicationData.positionInfo = {
-                positionDesired: formData.get('positionDesired') || '',
-                dateAvailable: formData.get('dateAvailable') || '',
-                desiredSalary: formData.get('desiredSalary') || '',
-                authorizedToWork: getRadioValue('authorized') || '',
-                employedBefore: getRadioValue('employedBefore') || '',
-                employedBeforeWhen: formData.get('employedBeforeWhen') || ''
-            };
-
-            // Education
-            applicationData.education = {
-                highSchool: {
-                    name: formData.get('hsName') || '',
-                    location: formData.get('hsLocation') || '',
-                    datesFrom: formData.get('hsDatesFrom') || '',
-                    datesTo: formData.get('hsDatesTo') || '',
-                    graduated: getRadioValue('hsGraduated') || '',
-                    degree: formData.get('hsDegree') || ''
-                },
-                college: {
-                    name: formData.get('collegeName') || '',
-                    location: formData.get('collegeLocation') || '',
-                    datesFrom: formData.get('collegeDatesFrom') || '',
-                    datesTo: formData.get('collegeDatesTo') || '',
-                    graduated: getRadioValue('collegeGraduated') || '',
-                    degree: formData.get('collegeDegree') || ''
-                },
-                otherEducation: {
-                    name: formData.get('otherName') || '',
-                    location: formData.get('otherLocation') || '',
-                    datesFrom: formData.get('otherDatesFrom') || '',
-                    datesTo: formData.get('otherDatesTo') || '',
-                    credential: formData.get('otherCredential') || ''
+                // Check if all required fields are filled, including disclaimers
+                if (!form.checkValidity()) {
+                    const msg = 'Please fill out all required fields and acknowledge all disclaimers before submitting.';
+                    warningMessageElement.textContent = msg;
+                    displayOnScreenError(msg);
+                    form.reportValidity(); // Show browser's validation messages
+                    console.warn("Form validation failed.");
+                    return;
                 }
-            };
 
-            // Work Experience
-            applicationData.workExperience = [];
-            for (let i = 1; i <= 3; i++) {
-                applicationData.workExperience.push({
-                    company: formData.get(`employer${i}Company`) || '',
-                    title: formData.get(`employer${i}Title`) || '',
-                    datesFrom: formData.get(`employer${i}DatesFrom`) || '',
-                    datesTo: formData.get(`employer${i}DatesTo`) || '',
-                    supervisor: formData.get(`employer${i}Supervisor`) || '',
-                    phone: formData.get(`employer${i}Phone`) || '',
-                    mayContact: getRadioValue(`employer${i}Contact`) || '',
-                    responsibilities: formData.get(`employer${i}Responsibilities`) || ''
-                });
-            }
+                submitMessageElement.textContent = 'Submitting application...';
+                submitMessageElement.style.color = '#3b82f6'; // Blue for submitting status
+                submitButton.disabled = true; // Disable button during submission
 
-            // References
-            applicationData.references = [];
-            for (let i = 1; i <= 3; i++) {
-                applicationData.references.push({
-                    name: formData.get(`ref${i}Name`) || '',
-                    relationship: formData.get(`ref${i}Relationship`) || '',
-                    phone: formData.get(`ref${i}Phone`) || '',
-                    email: formData.get(`ref${i}Email`) || ''
-                });
-            }
-
-            // Disclaimers
-            applicationData.disclaimers = {
-                disclaimer1: formData.get('disclaimer1') === 'on',
-                disclaimer2: formData.get('disclaimer2') === 'on',
-                disclaimer3: formData.get('disclaimer3') === 'on'
-            };
-
-            // Signature and Date
-            applicationData.signature = canvas.toDataURL('image/png'); // Get signature as base64 data URL
-            applicationData.submissionDate = formData.get('date') || '';
-
-            // Firestore document reference
-            const docId = 'ram_shack_application'; // Fixed doc ID for this application
-            const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/job_applications`, docId);
-
-            try {
-                await setDoc(docRef, applicationData);
-                submitMessageElement.textContent = 'Application submitted successfully!';
-                submitMessageElement.style.color = '#10b981'; // Green for success
-
-                // Hide the submit button and messages, then show the download section
-                submitButton.classList.add('hide-for-capture');
-                submitMessageElement.classList.add('hide-for-capture');
-                warningMessageElement.classList.add('hide-for-capture');
-                downloadSection.classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Error submitting application to Firestore: ", error);
-                warningMessageElement.textContent = 'Submission failed. Please try again. Error: ' + error.message;
-                submitMessageElement.textContent = ''; // Clear submitting message
-            } finally {
-                // Clear messages after a few seconds (except the download section)
-                setTimeout(() => {
-                    submitMessageElement.textContent = '';
-                    warningMessageElement.textContent = '';
-                }, 10000);
-            }
-        });
-
-        // Helper function to introduce a delay
-        const delay = ms => new Promise(res => setTimeout(res, ms));
-
-        // --- Download PDF Logic (Revised for Direct PDF Drawing) ---
-        downloadApplicationPDFBtn.addEventListener('click', async () => {
-            downloadApplicationPDFBtn.disabled = true;
-            downloadStatusElement.classList.remove('hidden');
-            downloadStatusElement.textContent = 'Generating PDF... This may take a moment.';
-            console.log("Starting PDF generation...");
-
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 size
-
-                const margin = 15; // 15mm margin on all sides
-                const pdfPageWidth = doc.internal.pageSize.getWidth();
-                const pdfPageHeight = doc.internal.pageSize.getHeight();
-                const usablePageWidth = pdfPageWidth - (2 * margin);
-
-                let currentY = margin; // This is the top position for the *next* content on the current PDF page
-                const lineHeight = 7; // Standard line height for text
-                const sectionSpacing = 10; // Space between major sections
-                const subSectionSpacing = 7; // Space between sub-sections (e.g., High School, College)
-                const fieldSpacing = 5; // Space between individual form fields
-
-                // Helper to add a new page if content exceeds current page height
-                const addPageIfNeeded = (heightNeeded) => {
-                    if (currentY + heightNeeded > pdfPageHeight - margin) {
-                        doc.addPage();
-                        currentY = margin; // Reset Y for new page
-                    }
-                };
-
-                // Helper to add a title
-                const addTitle = (text) => {
-                    addPageIfNeeded(lineHeight * 2); // Estimate height for title + some space
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(22);
-                    doc.setTextColor(31, 41, 55); // text-gray-900
-                    doc.text(text, pdfPageWidth / 2, currentY, { align: 'center' });
-                    currentY += lineHeight * 2;
-                    doc.setDrawColor(229, 231, 235); // border-gray-200
-                    doc.line(margin, currentY - lineHeight / 2, pdfPageWidth - margin, currentY - lineHeight / 2); // Underline
-                    currentY += lineHeight;
-                };
-
-                // Helper to add a section heading
-                const addSectionHeading = (text) => {
-                    addPageIfNeeded(lineHeight * 1.5); // Estimate height for heading
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(16);
-                    doc.setTextColor(55, 65, 81); // text-gray-800
-                    doc.text(text, margin, currentY);
-                    currentY += lineHeight * 1.5;
-                    doc.setDrawColor(229, 231, 235); // border-gray-200
-                    doc.line(margin, currentY - lineHeight / 2, pdfPageWidth - margin, currentY - lineHeight / 2); // Underline
-                    currentY += lineHeight;
-                };
-
-                // Helper to add a sub-section heading
-                const addSubSectionHeading = (text) => {
-                    addPageIfNeeded(lineHeight); // Estimate height for sub-heading
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(14);
-                    doc.setTextColor(75, 85, 99); // text-gray-700
-                    doc.text(text, margin, currentY);
-                    currentY += lineHeight + 3; // Add a bit more space after sub-heading
-                };
-
-                // Helper to add a field and its value
-                const addField = (label, value) => {
-                    const text = `${label}: ${value || 'N/A'}`;
-                    const splitText = doc.splitTextToSize(text, usablePageWidth - 20); // Allow some padding for text
-                    const textHeight = splitText.length * doc.getLineHeight() / doc.internal.scaleFactor;
-
-                    addPageIfNeeded(textHeight + fieldSpacing);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(11);
-                    doc.setTextColor(31, 41, 55); // text-gray-900
-                    doc.text(splitText, margin + 5, currentY); // Indent slightly
-                    currentY += textHeight + fieldSpacing;
-                };
-
-                // Retrieve the submitted application data
+                // Collect all form data
                 const formData = new FormData(form);
                 const applicationData = {};
 
+                // Helper function to get value for radio buttons
                 const getRadioValue = (name) => {
                     const radios = document.querySelectorAll(`input[name="${name}"]`);
                     for (const radio of radios) {
@@ -986,6 +732,7 @@
                     return '';
                 };
 
+                // Personal Information
                 applicationData.personalInfo = {
                     fullName: formData.get('fullName') || '',
                     address: formData.get('address') || '',
@@ -994,6 +741,7 @@
                     emailAddress: formData.get('emailAddress') || ''
                 };
 
+                // Position Applied For
                 applicationData.positionInfo = {
                     positionDesired: formData.get('positionDesired') || '',
                     dateAvailable: formData.get('dateAvailable') || '',
@@ -1003,6 +751,7 @@
                     employedBeforeWhen: formData.get('employedBeforeWhen') || ''
                 };
 
+                // Education
                 applicationData.education = {
                     highSchool: {
                         name: formData.get('hsName') || '',
@@ -1029,6 +778,7 @@
                     }
                 };
 
+                // Work Experience
                 applicationData.workExperience = [];
                 for (let i = 1; i <= 3; i++) {
                     applicationData.workExperience.push({
@@ -1043,6 +793,7 @@
                     });
                 }
 
+                // References
                 applicationData.references = [];
                 for (let i = 1; i <= 3; i++) {
                     applicationData.references.push({
@@ -1053,192 +804,391 @@
                     });
                 }
 
+                // Disclaimers
                 applicationData.disclaimers = {
                     disclaimer1: formData.get('disclaimer1') === 'on',
                     disclaimer2: formData.get('disclaimer2') === 'on',
                     disclaimer3: formData.get('disclaimer3') === 'on'
                 };
 
-                applicationData.signature = canvas.toDataURL('image/png');
+                // Typed Signature and Date
+                applicationData.signature = typedSignatureInput.value || ''; // Get value from new input
                 applicationData.submissionDate = formData.get('date') || '';
 
+                // Firestore document reference
+                const docId = 'ram_shack_application'; // Fixed doc ID for this application
+                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/job_applications`, docId);
 
-                // --- Add Content to PDF ---
+                try {
+                    await setDoc(docRef, applicationData);
+                    submitMessageElement.textContent = 'Application submitted successfully!';
+                    submitMessageElement.style.color = '#10b981'; // Green for success
+                    console.log("Application data submitted to Firestore.");
 
-                // Application Header
-                addTitle('Ram Shack Job Application');
-                addPageIfNeeded(lineHeight);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.setTextColor(107, 114, 128); // text-gray-600
-                doc.text('Please complete this application form accurately and thoroughly.', pdfPageWidth / 2, currentY, { align: 'center' });
-                currentY += lineHeight + sectionSpacing;
+                    // Hide the submit button and messages, then show the download section
+                    submitButton.style.display = 'none'; // Use style.display to hide
+                    submitMessageElement.style.display = 'none';
+                    warningMessageElement.style.display = 'none';
+                    downloadSection.classList.remove('hidden');
 
-                // Personal Information
-                addSectionHeading('Personal Information');
-                addField('Full Name', applicationData.personalInfo.fullName);
-                addField('Address', applicationData.personalInfo.address);
-                addField('City, State, Zip', applicationData.personalInfo.cityStateZip);
-                addField('Phone Number', applicationData.personalInfo.phoneNumber);
-                addField('Email Address', applicationData.personalInfo.emailAddress);
-                currentY += sectionSpacing;
-
-                // Position Applied For
-                addSectionHeading('Position Applied For');
-                addField('Position Desired', applicationData.positionInfo.positionDesired);
-                addField('Date Available', applicationData.positionInfo.dateAvailable);
-                addField('Desired Salary', applicationData.positionInfo.desiredSalary);
-                addField('Legally authorized to work in US', applicationData.positionInfo.authorizedToWork === 'yes' ? 'Yes' : 'No');
-                addField('Employed by Ram Shack before', applicationData.positionInfo.employedBefore === 'yes' ? 'Yes' : 'No');
-                if (applicationData.positionInfo.employedBefore === 'yes') {
-                    addField('If yes, when', applicationData.positionInfo.employedBeforeWhen);
+                } catch (error) {
+                    console.error("Error submitting application to Firestore: ", error);
+                    const msg = 'Submission failed. Please try again. Error: ' + error.message;
+                    warningMessageElement.textContent = msg;
+                    displayOnScreenError(msg);
+                    submitMessageElement.textContent = ''; // Clear submitting message
+                } finally {
+                    submitButton.disabled = false; // Re-enable button
+                    // Clear messages after a few seconds (except the download section)
+                    setTimeout(() => {
+                        submitMessageElement.textContent = '';
+                        warningMessageElement.textContent = '';
+                    }, 10000);
                 }
-                currentY += sectionSpacing;
+            });
+        }
 
-                // Education
-                addSectionHeading('Education');
-                currentY += subSectionSpacing;
+        // --- Download PDF Logic (Revised for Typed Signature) ---
+        if (downloadApplicationPDFBtn) {
+            downloadApplicationPDFBtn.addEventListener('click', async () => {
+                downloadApplicationPDFBtn.disabled = true;
+                downloadStatusElement.classList.remove('hidden');
+                downloadStatusElement.textContent = 'Generating PDF... This may take a moment.';
+                console.log("Starting PDF generation...");
 
-                addSubSectionHeading('High School');
-                addField('Name of High School', applicationData.education.highSchool.name);
-                addField('Location', applicationData.education.highSchool.location);
-                addField('Dates Attended', `${applicationData.education.highSchool.datesFrom} to ${applicationData.education.highSchool.datesTo}`);
-                addField('Graduated', applicationData.education.highSchool.graduated === 'yes' ? 'Yes' : 'No');
-                if (applicationData.education.highSchool.graduated === 'yes') {
-                    addField('Degree/Diploma', applicationData.education.highSchool.degree);
-                }
-                currentY += subSectionSpacing;
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 size
 
-                addSubSectionHeading('College/University');
-                addField('Name of Institution', applicationData.education.college.name);
-                addField('Location', applicationData.education.college.location);
-                addField('Dates Attended', `${applicationData.education.college.datesFrom} to ${applicationData.education.college.datesTo}`);
-                addField('Graduated', applicationData.education.college.graduated === 'yes' ? 'Yes' : 'No');
-                if (applicationData.education.college.graduated === 'yes') {
-                    addField('Degree/Major', applicationData.education.college.degree);
-                }
-                currentY += subSectionSpacing;
+                    const margin = 15; // 15mm margin on all sides
+                    const pdfPageWidth = doc.internal.pageSize.getWidth();
+                    const pdfPageHeight = doc.internal.pageSize.getHeight();
+                    const usablePageWidth = pdfPageWidth - (2 * margin);
 
-                addSubSectionHeading('Other (Trade School, Certifications, etc.)');
-                addField('Name of Institution/Program', applicationData.education.otherEducation.name);
-                addField('Location', applicationData.education.otherEducation.location);
-                addField('Dates Attended', `${applicationData.education.otherEducation.datesFrom} to ${applicationData.education.otherEducation.datesTo}`);
-                addField('Certificate/Credential', applicationData.education.otherEducation.credential);
-                currentY += sectionSpacing;
+                    let currentY = margin; // This is the top position for the *next* content on the current PDF page
+                    const lineHeight = 7; // Standard line height for text
+                    const sectionSpacing = 10; // Space between major sections
+                    const subSectionSpacing = 7; // Space between sub-sections (e.g., High School, College)
+                    const fieldSpacing = 5; // Space between individual form fields
 
-                // Work Experience
-                addSectionHeading('Work Experience');
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.setTextColor(107, 114, 128); // text-gray-600
-                addPageIfNeeded(lineHeight);
-                doc.text('Please list your last three employers, starting with the most recent.', margin, currentY);
-                currentY += lineHeight + subSectionSpacing;
+                    // Helper to add a new page if content exceeds current page height
+                    const addPageIfNeeded = (heightNeeded) => {
+                        if (currentY + heightNeeded > pdfPageHeight - margin) {
+                            doc.addPage();
+                            currentY = margin; // Reset Y for new page
+                        }
+                    };
 
-                applicationData.workExperience.forEach((employer, index) => {
-                    addSubSectionHeading(`Employer ${index + 1}`);
-                    addField('Company Name', employer.company);
-                    addField('Job Title', employer.title);
-                    addField('Dates Employed', `${employer.datesFrom} to ${employer.datesTo}`);
-                    addField('Supervisor\'s Name', employer.supervisor);
-                    addField('Phone Number', employer.phone);
-                    addField('May we contact this employer', employer.mayContact === 'yes' ? 'Yes' : 'No');
-                    addField('Responsibilities', employer.responsibilities);
+                    // Helper to add a title
+                    const addTitle = (text) => {
+                        addPageIfNeeded(lineHeight * 2); // Estimate height for title + some space
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(22);
+                        doc.setTextColor(31, 41, 55); // text-gray-900
+                        doc.text(text, pdfPageWidth / 2, currentY, { align: 'center' });
+                        currentY += lineHeight * 2;
+                        doc.setDrawColor(229, 231, 235); // border-gray-200
+                        doc.line(margin, currentY - lineHeight / 2, pdfPageWidth - margin, currentY - lineHeight / 2); // Underline
+                        currentY += lineHeight;
+                    };
+
+                    // Helper to add a section heading
+                    const addSectionHeading = (text) => {
+                        addPageIfNeeded(lineHeight * 1.5); // Estimate height for heading
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(16);
+                        doc.setTextColor(55, 65, 81); // text-gray-800
+                        doc.text(text, margin, currentY);
+                        currentY += lineHeight * 1.5;
+                        doc.setDrawColor(229, 231, 235); // border-gray-200
+                        doc.line(margin, currentY - lineHeight / 2, pdfPageWidth - margin, currentY - lineHeight / 2); // Underline
+                        currentY += lineHeight;
+                    };
+
+                    // Helper to add a sub-section heading
+                    const addSubSectionHeading = (text) => {
+                        addPageIfNeeded(lineHeight); // Estimate height for sub-heading
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(14);
+                        doc.setTextColor(75, 85, 99); // text-gray-700
+                        doc.text(text, margin, currentY);
+                        currentY += lineHeight + 3; // Add a bit more space after sub-heading
+                    };
+
+                    // Helper to add a field and its value
+                    const addField = (label, value) => {
+                        const text = `${label}: ${value || 'N/A'}`;
+                        const splitText = doc.splitTextToSize(text, usablePageWidth - 20); // Allow some padding for text
+                        const textHeight = splitText.length * doc.getLineHeight() / doc.internal.scaleFactor;
+
+                        addPageIfNeeded(textHeight + fieldSpacing);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(11);
+                        doc.setTextColor(31, 41, 55); // text-gray-900
+                        doc.text(splitText, margin + 5, currentY); // Indent slightly
+                        currentY += textHeight + fieldSpacing;
+                    };
+
+                    // Retrieve the submitted application data
+                    const formData = new FormData(form);
+                    const applicationData = {};
+
+                    const getRadioValue = (name) => {
+                        const radios = document.querySelectorAll(`input[name="${name}"]`);
+                        for (const radio of radios) {
+                            if (radio.checked) {
+                                return radio.value;
+                            }
+                        }
+                        return '';
+                    };
+
+                    applicationData.personalInfo = {
+                        fullName: formData.get('fullName') || '',
+                        address: formData.get('address') || '',
+                        cityStateZip: formData.get('cityStateZip') || '',
+                        phoneNumber: formData.get('phoneNumber') || '',
+                        emailAddress: formData.get('emailAddress') || ''
+                    };
+
+                    applicationData.positionInfo = {
+                        positionDesired: formData.get('positionDesired') || '',
+                        dateAvailable: formData.get('dateAvailable') || '',
+                        desiredSalary: formData.get('desiredSalary') || '',
+                        authorizedToWork: getRadioValue('authorized') || '',
+                        employedBefore: getRadioValue('employedBefore') || '',
+                        employedBeforeWhen: formData.get('employedBeforeWhen') || ''
+                    };
+
+                    applicationData.education = {
+                        highSchool: {
+                            name: formData.get('hsName') || '',
+                            location: formData.get('hsLocation') || '',
+                            datesFrom: formData.get('hsDatesFrom') || '',
+                            datesTo: formData.get('hsDatesTo') || '',
+                            graduated: getRadioValue('hsGraduated') || '',
+                            degree: formData.get('hsDegree') || ''
+                        },
+                        college: {
+                            name: formData.get('collegeName') || '',
+                            location: formData.get('collegeLocation') || '',
+                            datesFrom: formData.get('collegeDatesFrom') || '',
+                            datesTo: formData.get('collegeDatesTo') || '',
+                            graduated: getRadioValue('collegeGraduated') || '',
+                            degree: formData.get('collegeDegree') || ''
+                        },
+                        otherEducation: {
+                            name: formData.get('otherName') || '',
+                            location: formData.get('otherLocation') || '',
+                            datesFrom: formData.get('otherDatesFrom') || '',
+                            datesTo: formData.get('otherDatesTo') || '',
+                            credential: formData.get('otherCredential') || ''
+                        }
+                    };
+
+                    applicationData.workExperience = [];
+                    for (let i = 1; i <= 3; i++) {
+                        applicationData.workExperience.push({
+                            company: formData.get(`employer${i}Company`) || '',
+                            title: formData.get(`employer${i}Title`) || '',
+                            datesFrom: formData.get(`employer${i}DatesFrom`) || '',
+                            datesTo: formData.get(`employer${i}DatesTo`) || '',
+                            supervisor: formData.get(`employer${i}Supervisor`) || '',
+                            phone: formData.get(`employer${i}Phone`) || '',
+                            mayContact: getRadioValue(`employer${i}Contact`) || '',
+                            responsibilities: formData.get(`employer${i}Responsibilities`) || ''
+                        });
+                    }
+
+                    applicationData.references = [];
+                    for (let i = 1; i <= 3; i++) {
+                        applicationData.references.push({
+                            name: formData.get(`ref${i}Name`) || '',
+                            relationship: formData.get(`ref${i}Relationship`) || '',
+                            phone: formData.get(`ref${i}Phone`) || '',
+                            email: formData.get(`ref${i}Email`) || ''
+                        });
+                    }
+
+                    applicationData.disclaimers = {
+                        disclaimer1: formData.get('disclaimer1') === 'on',
+                        disclaimer2: formData.get('disclaimer2') === 'on',
+                        disclaimer3: formData.get('disclaimer3') === 'on'
+                    };
+
+                    applicationData.signature = typedSignatureInput.value || '';
+                    applicationData.submissionDate = formData.get('date') || '';
+
+
+                    // --- Add Content to PDF ---
+
+                    // Application Header
+                    addTitle('Ram Shack Job Application');
+                    addPageIfNeeded(lineHeight);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.setTextColor(107, 114, 128); // text-gray-600
+                    doc.text('Please complete this application form accurately and thoroughly.', pdfPageWidth / 2, currentY, { align: 'center' });
+                    currentY += lineHeight + sectionSpacing;
+
+                    // Personal Information
+                    addSectionHeading('Personal Information');
+                    addField('Full Name', applicationData.personalInfo.fullName);
+                    addField('Address', applicationData.personalInfo.address);
+                    addField('City, State, Zip', applicationData.personalInfo.cityStateZip);
+                    addField('Phone Number', applicationData.personalInfo.phoneNumber);
+                    addField('Email Address', applicationData.personalInfo.emailAddress);
+                    currentY += sectionSpacing;
+
+                    // Position Applied For
+                    addSectionHeading('Position Applied For');
+                    addField('Position Desired', applicationData.positionInfo.positionDesired);
+                    addField('Date Available', applicationData.positionInfo.dateAvailable);
+                    addField('Desired Salary', applicationData.positionInfo.desiredSalary);
+                    addField('Legally authorized to work in US', applicationData.positionInfo.authorizedToWork === 'yes' ? 'Yes' : 'No');
+                    addField('Employed by Ram Shack before', applicationData.positionInfo.employedBefore === 'yes' ? 'Yes' : 'No');
+                    if (applicationData.positionInfo.employedBefore === 'yes') {
+                        addField('If yes, when', applicationData.positionInfo.employedBeforeWhen);
+                    }
+                    currentY += sectionSpacing;
+
+                    // Education
+                    addSectionHeading('Education');
                     currentY += subSectionSpacing;
-                });
-                currentY -= subSectionSpacing; // Adjust for last loop iteration
-                currentY += sectionSpacing;
 
-                // References
-                addSectionHeading('References');
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.setTextColor(107, 114, 128); // text-gray-600
-                addPageIfNeeded(lineHeight);
-                doc.text('Please provide three professional references who are not relatives.', margin, currentY);
-                currentY += lineHeight + subSectionSpacing;
-
-                applicationData.references.forEach((ref, index) => {
-                    addSubSectionHeading(`Reference ${index + 1}`);
-                    addField('Name', ref.name);
-                    addField('Relationship', ref.relationship);
-                    addField('Phone Number', ref.phone);
-                    addField('Email Address', ref.email);
+                    addSubSectionHeading('High School');
+                    addField('Name of High School', applicationData.education.highSchool.name);
+                    addField('Location', applicationData.education.highSchool.location);
+                    addField('Dates Attended', `${applicationData.education.highSchool.datesFrom} to ${applicationData.education.highSchool.datesTo}`);
+                    addField('Graduated', applicationData.education.highSchool.graduated === 'yes' ? 'Yes' : 'No');
+                    if (applicationData.education.highSchool.graduated === 'yes') {
+                        addField('Degree/Diploma', applicationData.education.highSchool.degree);
+                    }
                     currentY += subSectionSpacing;
-                });
-                currentY -= subSectionSpacing; // Adjust for last loop iteration
-                currentY += sectionSpacing;
 
-                // Disclaimer and Signature
-                addSectionHeading('Disclaimer and Signature');
-                currentY += subSectionSpacing;
+                    addSubSectionHeading('College/University');
+                    addField('Name of Institution', applicationData.education.college.name);
+                    addField('Location', applicationData.education.college.location);
+                    addField('Dates Attended', `${applicationData.education.college.datesFrom} to ${applicationData.education.college.datesTo}`);
+                    addField('Graduated', applicationData.education.college.graduated === 'yes' ? 'Yes' : 'No');
+                    if (applicationData.education.college.graduated === 'yes') {
+                        addField('Degree/Major', applicationData.education.college.degree);
+                    }
+                    currentY += subSectionSpacing;
 
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.setTextColor(75, 85, 99); // text-gray-700
+                    addSubSectionHeading('Other (Trade School, Certifications, etc.)');
+                    addField('Name of Institution/Program', applicationData.education.otherEducation.name);
+                    addField('Location', applicationData.education.otherEducation.location);
+                    addField('Dates Attended', `${applicationData.education.otherEducation.datesFrom} to ${applicationData.education.otherEducation.datesTo}`);
+                    addField('Certificate/Credential', applicationData.education.otherEducation.credential);
+                    currentY += sectionSpacing;
 
-                const disclaimers = [
-                    { label: 'disclaimer1', text: 'I certify that the information provided in this application is true and complete to the best of my knowledge. I understand that any false or misleading information given in my application or interview(s) may result in my disqualification from employment or termination if discovered after employment.' },
-                    { label: 'disclaimer2', text: 'I authorize The Ram Shack to contact my previous employers, references, and educational institutions to verify the information provided and to inquire about my work performance and character. I release The Ram Shack and any references from liability for any information provided.' },
-                    { label: 'disclaimer3', text: 'I understand that this application does not constitute an an offer of employment. If hired, I agree to abide by all policies, rules, and regulations of The Ram Shack. I understand that my employment will be "at-will," meaning that either I or The Ram Shack may terminate the employment relationship at any time, with or without cause or notice, for any reason not prohibited by law.' }
-                ];
+                    // Work Experience
+                    addSectionHeading('Work Experience');
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.setTextColor(107, 114, 128); // text-gray-600
+                    addPageIfNeeded(lineHeight);
+                    doc.text('Please list your last three employers, starting with the most recent.', margin, currentY);
+                    currentY += lineHeight + subSectionSpacing;
 
-                disclaimers.forEach((disclaimer) => {
-                    const disclaimerText = `[${applicationData.disclaimers[disclaimer.label] ? 'X' : ' '}] ${disclaimer.text}`;
-                    const splitDisclaimer = doc.splitTextToSize(disclaimerText, usablePageWidth - 10);
-                    const disclaimerHeight = splitDisclaimer.length * doc.getLineHeight() / doc.internal.scaleFactor;
-                    addPageIfNeeded(disclaimerHeight + fieldSpacing);
-                    doc.text(splitDisclaimer, margin, currentY);
-                    currentY += disclaimerHeight + fieldSpacing;
-                });
-                currentY += subSectionSpacing;
+                    applicationData.workExperience.forEach((employer, index) => {
+                        addSubSectionHeading(`Employer ${index + 1}`);
+                        addField('Company Name', employer.company);
+                        addField('Job Title', employer.title);
+                        addField('Dates Employed', `${employer.datesFrom} to ${employer.datesTo}`);
+                        addField('Supervisor\'s Name', employer.supervisor);
+                        addField('Phone Number', employer.phone);
+                        addField('May we contact this employer', employer.mayContact === 'yes' ? 'Yes' : 'No');
+                        addField('Responsibilities', employer.responsibilities);
+                        currentY += subSectionSpacing;
+                    });
+                    currentY -= subSectionSpacing; // Adjust for last loop iteration
+                    currentY += sectionSpacing;
 
-                // Add Signature Image
-                addPageIfNeeded(40 + fieldSpacing); // Estimate height for signature
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(11);
-                doc.setTextColor(31, 41, 55);
-                doc.text('Signature:', margin, currentY);
-                currentY += lineHeight;
+                    // References
+                    addSectionHeading('References');
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.setTextColor(107, 114, 128); // text-gray-600
+                    addPageIfNeeded(lineHeight);
+                    doc.text('Please provide three professional references who are not relatives.', margin, currentY);
+                    currentY += lineHeight + subSectionSpacing;
 
-                // Capture signature canvas
-                const signatureCanvas = document.getElementById('signatureCanvas');
-                const signatureImgData = await html2canvas(signatureCanvas, {
-                    scale: 2, // Keep scale for signature quality
-                    backgroundColor: '#ffffff',
-                    useCORS: true,
-                    logging: false
-                }).then(canvas => canvas.toDataURL('image/png'));
+                    applicationData.references.forEach((ref, index) => {
+                        addSubSectionHeading(`Reference ${index + 1}`);
+                        addField('Name', ref.name);
+                        addField('Relationship', ref.relationship);
+                        addField('Phone Number', ref.phone);
+                        addField('Email Address', ref.email);
+                        currentY += subSectionSpacing;
+                    });
+                    currentY -= subSectionSpacing; // Adjust for last loop iteration
+                    currentY += sectionSpacing;
 
-                const signatureWidth = 70; // mm
-                const signatureHeight = (signatureCanvas.height / signatureCanvas.width) * signatureWidth; // Maintain aspect ratio
+                    // Disclaimer and Signature
+                    addSectionHeading('Disclaimer and Signature');
+                    currentY += subSectionSpacing;
 
-                doc.addImage(signatureImgData, 'PNG', margin, currentY, signatureWidth, signatureHeight);
-                currentY += signatureHeight + fieldSpacing;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.setTextColor(75, 85, 99); // text-gray-700
 
-                // Add Date
-                addField('Date', applicationData.submissionDate);
-                currentY += sectionSpacing;
+                    const disclaimers = [
+                        { label: 'disclaimer1', text: 'I certify that the information provided in this application is true and complete to the best of my knowledge. I understand that any false or misleading information given in my application or interview(s) may result in my disqualification from employment or termination if discovered after employment.' },
+                        { label: 'disclaimer2', text: 'I authorize The Ram Shack to contact my previous employers, references, and educational institutions to verify the information provided and to inquire about my work performance and character. I release The Ram Shack and any references from liability for any information provided.' },
+                        { label: 'disclaimer3', text: 'I understand that this application does not constitute an an offer of employment. If hired, I agree to abide by all policies, rules, and regulations of The Ram Shack. I understand that my employment will be "at-will," meaning that either I or The Ram Shack may terminate the employment relationship at any time, with or without cause or notice, for any reason not prohibited by law.' }
+                    ];
 
+                    disclaimers.forEach((disclaimer) => {
+                        const disclaimerText = `[${applicationData.disclaimers[disclaimer.label] ? 'X' : ' '}] ${disclaimer.text}`;
+                        const splitDisclaimer = doc.splitTextToSize(disclaimerText, usablePageWidth - 10);
+                        const disclaimerHeight = splitDisclaimer.length * doc.getLineHeight() / doc.internal.scaleFactor;
+                        addPageIfNeeded(disclaimerHeight + fieldSpacing);
+                        doc.text(splitDisclaimer, margin, currentY);
+                        currentY += disclaimerHeight + fieldSpacing;
+                    });
+                    currentY += subSectionSpacing;
 
-                // Determine filename
-                const fullNameInput = document.getElementById('fullName');
-                const fileName = fullNameInput && fullNameInput.value ?
-                                 `${fullNameInput.value.replace(/[^a-zA-Z0-9]/g, '_')}_application.pdf` :
-                                 'ram_shack_application.pdf';
+                    // Add Typed Signature to PDF
+                    addPageIfNeeded(lineHeight * 2); // Estimate height for signature text
+                    doc.setFont('helvetica', 'normal'); // Reset font for label
+                    doc.setFontSize(11);
+                    doc.setTextColor(31, 41, 55);
+                    doc.text('Signature:', margin, currentY);
+                    currentY += lineHeight;
 
-                doc.save(fileName);
-                console.log("PDF saved successfully.");
-                downloadStatusElement.textContent = 'Download complete!';
-            } catch (error) {
-                console.error('Error generating or downloading PDF:', error);
-                downloadStatusElement.textContent = 'Download failed. Please try again. Error: ' + error.message;
-            } finally {
-                downloadApplicationPDFBtn.disabled = false;
-                downloadStatusElement.classList.add('hidden'); // Hide status after completion/error
-                downloadStatusElement.textContent = 'Generating PDF...'; // Reset for next time
-            }
-        });
+                    doc.setFont('helvetica', 'bolditalic'); // Use bold italic for typed signature
+                    doc.setFontSize(16); // Larger font for signature
+                    doc.setTextColor(31, 41, 55);
+                    doc.text(applicationData.signature, margin + 5, currentY); // Indent slightly
+                    currentY += lineHeight * 1.5; // Space after signature
+
+                    // Add Date
+                    addField('Date', applicationData.submissionDate);
+                    currentY += sectionSpacing;
+
+                    // Determine filename
+                    const fullNameInput = document.getElementById('fullName');
+                    const fileName = fullNameInput && fullNameInput.value ?
+                                     `${fullNameInput.value.replace(/[^a-zA-Z0-9]/g, '_')}_application.pdf` :
+                                     'ram_shack_application.pdf';
+
+                    doc.save(fileName);
+                    console.log("PDF saved successfully.");
+                    downloadStatusElement.textContent = 'Download complete!';
+                } catch (error) {
+                    console.error('Error generating or downloading PDF:', error);
+                    const msg = 'Download failed. Please try again. Error: ' + error.message;
+                    downloadStatusElement.textContent = msg;
+                    displayOnScreenError(msg);
+                } finally {
+                    downloadApplicationPDFBtn.disabled = false;
+                    downloadStatusElement.classList.add('hidden'); // Hide status after completion/error
+                    downloadStatusElement.textContent = 'Generating PDF...'; // Reset for next time
+                }
+            });
+        }
     </script>
 </body>
 </html>
