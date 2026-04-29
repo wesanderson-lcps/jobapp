@@ -157,6 +157,36 @@
             color: #ef4444; /* red-500 */
             font-weight: 500;
         }
+        .privacy-notice {
+            background-color: #eff6ff;
+            border: 1px solid #93c5fd;
+            border-left: 4px solid #2563eb;
+            border-radius: 0.5rem;
+            padding: 1rem 1.25rem;
+            margin-bottom: 2rem;
+        }
+        .privacy-notice h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1d4ed8;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        .privacy-notice p {
+            font-size: 0.875rem;
+            color: #1e3a5f;
+            margin: 0.25rem 0;
+            line-height: 1.5;
+        }
+        .privacy-notice ul {
+            font-size: 0.875rem;
+            color: #1e3a5f;
+            margin: 0.5rem 0 0 1.25rem;
+            padding: 0;
+        }
+        .privacy-notice ul li {
+            margin-bottom: 0.25rem;
+        }
         .download-section {
             margin-top: 1.5rem;
             padding: 1rem;
@@ -213,6 +243,19 @@
         </div>
 
         <form id="jobApplicationForm">
+
+            <div class="privacy-notice" role="note" aria-label="Privacy and Data Notice">
+                <h3>&#128274; Privacy &amp; Data Notice</h3>
+                <p><strong>This form does not transmit or store your information on any external server.</strong> All data you enter is processed entirely within your browser and is used only to generate a PDF that is saved directly to your device.</p>
+                <ul>
+                    <li>No data is sent to a third party, cloud service, or remote database.</li>
+                    <li>No cookies, trackers, or analytics collect your responses.</li>
+                    <li>Once the PDF is generated, your browser retains no record of your entries.</li>
+                    <li>You are responsible for the security of the PDF file saved to your device.</li>
+                </ul>
+                <p style="margin-top:0.5rem;">This tool is provided for educational use. If you have questions about data privacy, contact your instructor or LCPS Technology Services.</p>
+            </div>
+
             <div id="personal-info-section">
                 <h2>Personal Information</h2>
                 <div class="form-group">
@@ -582,6 +625,15 @@
                         <input type="checkbox" id="disclaimer3" name="disclaimer3" required class="mt-1">
                         <label for="disclaimer3" class="disclaimer-text ml-2">
                             I understand that this application does not constitute an an offer of employment. If hired, I agree to abide by all policies, rules, and regulations of The Ram Shack. I understand that my employment will be "at-will," meaning that either I or The Ram Shack may terminate the employment relationship at any time, with or without cause or notice, for any reason not prohibited by law.
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group align-start">
+                        <input type="checkbox" id="privacyConsent" name="privacyConsent" required class="mt-1">
+                        <label for="privacyConsent" class="disclaimer-text ml-2">
+                            I understand that this form processes all data locally in my browser only. No personal information I enter is transmitted to, or stored on, any external server or third-party service. I consent to completing this form with that understanding, and I acknowledge that I am responsible for the security of the PDF saved to my device.
                         </label>
                     </div>
                 </div>
